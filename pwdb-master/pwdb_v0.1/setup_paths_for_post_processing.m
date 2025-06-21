@@ -4,7 +4,7 @@ function PATHS = setup_paths_for_post_processing(pwdb_no)
 %      This line specifies the location of the storage folder      %
 %         which the input and output files are copied into         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-PATHS.storage_folder = '/Users/petercharlton/Documents/Data/Nektar1D/ageing_sims/';
+PATHS.storage_folder = '/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %      This line specifies the location of the shared folder       %
