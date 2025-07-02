@@ -2,7 +2,7 @@
 % Load all data and search tool functions
 load('Fictive_database.mat'); % contains NETWORK, COMPUTED_PHYSIO, etc.
 load('RADIAL_physio.mat');    % contains RADIAL_PHYSIO cell array
-addpath('/MATLAB Drive/Final Project/MatlabSearchTools');
+addpath('MatlabSearchTools');
 
 %% Explore Example Subject and Signal
 i = 1; % subject indice
@@ -14,9 +14,26 @@ A = subj.ONE_CYCLE(:,4); % area (m^2)
 N = numel(RADIAL_PHYSIO);
 
 figure;
-plot(t, P); xlabel('Time (s)'); ylabel('Pressure (Pa)');
-title('Radial Pressure Waveform, Example Subject');
 
+subplot(3,1,1);
+plot(t, P, 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('Pressure (Pa)');
+title('Pressure (P)');
+
+subplot(3,1,2);
+plot(t, Q, 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('Flow (m^3/s)');
+title('Flow (Q)');
+
+subplot(3,1,3);
+plot(t, A, 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('Area (m^2)');
+title('Area (A)');
+
+sgtitle('Radial Waveforms for Example Subject');
 
 %% Distribution of Stiffness and Other Parameters
 cfPWV_all = zeros(N,1);
@@ -120,17 +137,6 @@ legend('show', 'Location', 'northeastoutside')
 hold off
 
 
-%% Influence of Simulation Parameters on Stiffness and Morphology
-% Extract stiffness parameters (columns 8 and 9 in .PARAMETERS)
-Eel = COMPUTED_PHYSIO.PARAMETERS(:,8); % Elastic modulus scaling
-Emusc = COMPUTED_PHYSIO.PARAMETERS(:,9);
-
-% Scatter plot vs. cfPWV
-figure;
-scatter(Eel, cfPWV_all, 'b.');
-xlabel('Elastic Modulus Scaling (Eel)'); ylabel('cfPWV (m/s)');
-title('Effect of Elastic Modulus on Central Arterial Stiffness');
-
 %% Principal Component Analysis (PCA) on Waveforms
 
 % Feature Extraction for All Subjects
@@ -195,4 +201,3 @@ T = array2table([features, labels], ...
 
 writetable(T, 'radial_features_labels.csv');
 disp('Feature table exported as radial_features_labels.csv');
-

@@ -22,7 +22,7 @@ PPG_mat = PPG_mat.';           % Transpose: [Nsubjects x minLen]
 
 fs = data.waves.fs; % Sampling frequency
 
-%% --- Part 2: Waveform Analysis ---
+%% --- Part 2.1: Waveform Analysis ---
 haemods = data.haemods;
 
 % Indices of plausible subjects
@@ -56,6 +56,41 @@ end
 legend(labels); xlabel('Time (s)'); ylabel('PPG (a.u.)');
 title('Average Wrist PPG by Stiffness Group');
 hold off;
+
+%% --- Part 2.2: Pressure Waveform Analysis for Pressure ---
+% --- Get Radial Pressure at the wrist (radial artery) ---
+P_cells = data.waves.P_Radial(plausible); % Cell array, length Nplausible
+
+waveLens_P = cellfun(@numel, P_cells);
+minLen_P = min(waveLens_P);
+
+P_trunc = cellfun(@(x) x(1:minLen_P), P_cells, 'UniformOutput', false);
+
+% Build Pressure matrix: [subjects x time]
+P_mat = cell2mat(P_trunc); % [minLen_P x Nsubjects]
+P_mat = P_mat.';           % Transpose: [Nsubjects x minLen_P]
+fs = data.waves.fs; % Sampling frequency (already available from above)
+
+% Time vector (seconds)
+t_P = (0:minLen_P-1)/fs;
+
+% --- Plot average radial pressure for low/medium/high stiffness ---
+figure;
+hold on;
+colors = {'b','g','r'};
+labels = {'Low PWV','Medium PWV','High PWV'};
+for k = 1:3
+    groupIdx = (bin == k);
+    disp(['Group ', labels{k}, ' has ', num2str(sum(groupIdx)), ' subjects']);
+    if any(groupIdx)
+        meanP = mean(P_mat(groupIdx,:), 1);
+        plot(t_P, meanP, 'Color', colors{k}, 'LineWidth', 2);
+    end
+end
+legend(labels); xlabel('Time (s)'); ylabel('Pressure (a.u. or mmHg)');
+title('Average Radial Pressure by Stiffness Group');
+hold off;
+
 
 %% --- Part 3: Classical Feature-based Regression ---
 RI     = [haemods(plaus_idx).RI]';
