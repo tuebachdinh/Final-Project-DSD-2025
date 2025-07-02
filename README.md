@@ -17,7 +17,7 @@ Our broader objective is to understand how arterial stiffness (central pulse wav
 
 ## Datasets
 
-### 1. HaeMod Virtual Subjects (Willemet et al., Am J Physiol, 2015)
+### 1. HaeMod Virtual Subjects (Willemet et al., Am J Physiol, 2015)(original-dataset)
 - **3,325 virtual subjects** with simulated pressure, flow, and area waveforms at multiple arterial locations, including the wrist (radial artery).
 - Provided simulation parameters and computed indices (cfPWV, cardiac output, geometry).
 - Download and documentation: [http://haemod.uk/original](http://haemod.uk/original)
@@ -26,7 +26,7 @@ Our broader objective is to understand how arterial stiffness (central pulse wav
   *A database of virtual healthy subjects to assess the accuracy of foot-to-foot pulse wave velocities for estimation of aortic stiffness*.  
   Am J Physiol Heart Circ Physiol, 2015. [Link](https://doi.org/10.1152/ajpheart.00175.2015)
 
-### 2. PWDB In Silico Database (Charlton et al., Am J Physiol, 2019)
+### 2. PWDB In Silico Database (Charlton et al., Am J Physiol, 2019)(pwdb_1)
 - **4,374 virtual subjects** with simulated pressure, flow, area, and PPG waveforms at multiple sites (including wrist PPG).
 - Includes demographic and hemodynamic diversity (ages 25–75).
 - Download: [https://github.com/peterhcharlton/pwdb](https://github.com/peterhcharlton/pwdb)
