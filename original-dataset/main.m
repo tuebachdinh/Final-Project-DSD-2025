@@ -47,6 +47,7 @@ title('Distribution of Carotid-Femoral Pulse Wave Velocity');
 
 %% Visualize Example Pulse Waveforms by Stiffness
 % 1. Get indices for representative cfPWV values (min, 25th, median, 75th, max)
+[~, idx_sort] = sort(cfPWV_all);
 cfPWV_sorted = cfPWV_all(idx_sort);
 n_show = 7;
 cfPWV_targets = linspace(min(cfPWV_sorted), max(cfPWV_sorted), n_show);
