@@ -217,7 +217,67 @@ Field | Contents
 
 ## *data.pw_inds*
 
-This contains PW indices measured from PWs as described [here](pwdb_pw_indices.csv).
+This field contains pulse wave indices measured from simulated pulse waves for each virtual subject.  
+Indices are provided in the format and with the definitions described below.  
+The data is organized identically to the `pwdb_pw_indices.csv` spreadsheet.
+
+### Column Format
+
+Most column headers consist of three parts, separated by underscores, e.g., `AorticRoot_SBP_V`:
+- **Measurement site** (e.g., `AorticRoot`), as defined in the [arterial sites](#arterial_sites) section.
+- **Variable type** (e.g., `SBP`), as defined below.
+- **Value or time**:
+    - `V`: value (actual parameter value)
+    - `T`: time (in seconds)
+    - If no suffix is provided, the column refers to the value.
+
+### Variable Types
+
+| Column Header | Details |
+|---|---|
+| Age | Age, in years |
+| SBP | Systolic blood pressure, in mmHg |
+| DBP | Diastolic blood pressure, in mmHg |
+| MBP | Mean blood pressure, in mmHg |
+| PP | Pulse pressure, in mmHg |
+| Qmax | Maximum flow rate, in m³/s |
+| Qmin | Minimum flow rate, in m³/s |
+| Qmean | Mean flow rate, in m³/s |
+| Qtotal | Total flow during one cardiac cycle, in m³ |
+| Umax | Maximum flow velocity, in m/s |
+| Umin | Minimum flow velocity, in m/s |
+| Umean | Mean flow velocity, in m/s |
+| Amax | Maximum luminal area, in m² |
+| Amin | Minimum luminal area, in m² |
+| Amean | Mean luminal area, in m² |
+| P1in | p1, measured at the inflection point, in mmHg |
+| P1pk | p1, measured at the peak, in mmHg |
+| P2in | p2, measured at the inflection point, in mmHg |
+| P2pk | p2, measured at the peak, in mmHg |
+| Psys | Systolic pressure peak, in mmHg |
+| Pms | First derivative of pressure at time of maximum slope (max dP/dt), in mmHg/s |
+| AI | Augmentation index, calculated from P1in and P2pk |
+| AP | Augmentation pressure, calculated from P1in and P2pk |
+| PTT | Time between the onset of the pressure wave at the aortic root and the onset of the current pressure wave, in seconds |
+| PPGa | 'a' point on the second derivative of the PPG (au/s²). The PPG is measured in arbitrary units, scaled 0–1. |
+| PPGb | 'b' point on the second derivative of the PPG (au/s²) |
+| PPGc | 'c' point on the second derivative of the PPG (au/s²) |
+| PPGd | 'd' point on the second derivative of the PPG (au/s²) |
+| PPGe | 'e' point on the second derivative of the PPG (au/s²) |
+| PPGsys | Systolic peak on the PPG, in au |
+| PPGdia | Diastolic peak on the PPG, in au |
+| PPGdic | Dicrotic notch on the PPG, in au |
+| PPGms | First derivative of the PPG at time of maximum slope (max dPPG/dt), in au/s |
+| RI | Reflection index, calculated from the PPG wave |
+| SI | Stiffness index, calculated from the PPG wave (assuming a height of 1.75 m) |
+| AGI_mod | Modified ageing index, calculated from the PPG wave |
+
+**Note:** PPG-derived values are only provided at peripheral sites.
+
+---
+
+**For details of the measurement sites, see the section above.**  
+
 
 ## *data.plausibility*
 
