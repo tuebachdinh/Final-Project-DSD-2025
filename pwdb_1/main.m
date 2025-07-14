@@ -97,7 +97,41 @@ end
 
 %% --- Part 2.3: Insights about time delay ---
 
+% Using the onset times, and manually calculate the PTT
+% Get pulse onset times (in seconds) for each site, each subject
+onsets = data.waves.onset_times;
 
+% Get onset times at aortic root and at wrist (radial)
+onset_aortic = onsets.P_AorticRoot(plaus_idx); % [Nsubjects x 1], in sec
+onset_radial = onsets.P_Radial(plaus_idx);     % [Nsubjects x 1], in sec
+
+% Pulse transit time: heart (aortic root) to wrist (radial)
+PTT_aor_to_rad = onset_radial - onset_aortic;  % [Nsubjects x 1], in sec
+fprintf('Mean PTT (aortic root to radial): %.3f s (std: %.3f s)\n', ...
+    mean(PTT_aor_to_rad), std(PTT_aor_to_rad));
+
+
+% Using the pw_inds for precalculated features (more complex signal processing)
+pw_inds = data.pw_inds;
+PTT_pwinds = pw_inds.Radial_PTT(plaus_idx);
+PTT_pwinds_positive = PTT_pwinds(PTT_pwinds >= 0);
+fprintf('PTT (from pw_inds, aortic root to radial, positive only): mean %.3f s (N = %d)\n', ...
+    mean(PTT_pwinds_positive), numel(PTT_pwinds_positive));
+
+figure;
+histogram(PTT_aor_to_rad, 40);
+xlabel('PTT (AorticRoot \rightarrow Radial) [s]');
+ylabel('Count');
+title('Distribution of Pulse Transit Time (PTT) from Heart to Wrist');
+grid on;
+
+%% Scatter Plot: PTT vs Age
+figure;
+scatter(age, PTT_aor_to_rad, 10, 'filled');
+xlabel('Age (years)');
+ylabel('PTT (s)');
+title('PTT (Heart to Wrist) vs Age');
+grid on;
 
 %% --- Part 3: Age Dependence of Key Features from A_Radial ---
 
