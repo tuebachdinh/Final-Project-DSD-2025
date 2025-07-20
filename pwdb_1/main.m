@@ -44,6 +44,9 @@ t_A = (0:size(A_Radial,2)-1) / fs;
 
 %% --- Part 2.1 Plot All Wave Types at Radial by Stiffness Group (PWV tertile) ---
 % This helps visualize differences in P, U, A, PPG simultaneously by stiffness
+
+site = 'Radial'; % or 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
+
 edges_PWV = quantile(PWV_cf, [0 1/3 2/3 1]);
 [~, bin_PWV] = histc(PWV_cf, edges_PWV);
 
@@ -55,7 +58,7 @@ for i = 1:length(wave_types)
     subplot(2,2,i); hold on;
     for k = 1:3
         idx = (bin_PWV == k);
-        f = sprintf('%s_Radial', wave_types{i});
+        f = sprintf('%s_%s', wave_types{i}, site);
         t = (0:size(waves.(f),2)-1)/fs;
         if any(idx)
             plot(t, mean(waves.(f)(idx,:),1), 'LineWidth',2, ...
@@ -64,15 +67,55 @@ for i = 1:length(wave_types)
     end
     xlabel('Time (s)');
     ylabel(wave_types{i});
-    title([wave_types{i} ' (Radial) by Stiffness Group']);
+    title(sprintf('%s (%s) by Stiffness Group', wave_types{i}, site));
     legend('show');
     hold off;
 end
 
+%% --- Part 2.2: 4x3 Plot: Each Wave Type (row) by PWV Group (col), with mean ± std ---
 
-%% --- Part 2.2: Plot All Wave Types at Radial by Age Group ---
+site = 'Radial'; % Change as needed
+wave_types = {'P', 'U', 'A', 'PPG'}; % Change as needed
+
+edges_PWV = quantile(PWV_cf, [0 1/3 2/3 1]);
+[~, bin_PWV] = histc(PWV_cf, edges_PWV);
+
+labels_PWV = {'Low PWV','Medium PWV','High PWV'};
+
+figure('Position',[100 100 1600 800]);
+for i = 1:length(wave_types)
+    f = sprintf('%s_%s', wave_types{i}, site);
+    mat = waves.(f);
+    t = (0:size(mat,2)-1)/fs;
+    for k = 1:3
+        idx = (bin_PWV == k);
+        data_group = mat(idx,:);
+        mean_w = mean(data_group,1);
+        std_w = std(data_group,0,1);
+
+        subplot(length(wave_types),3,(i-1)*3 + k); hold on;
+        % Shaded area: mean ± std
+        fill([t, fliplr(t)], ...
+             [mean_w+std_w, fliplr(mean_w-std_w)], ...
+             [0.6 0.6 0.9], 'FaceAlpha',0.3, 'EdgeColor','none');
+        plot(t, mean_w, 'b', 'LineWidth',2);
+        xlabel('Time (s)');
+        ylabel(wave_types{i});
+        title(sprintf('%s - %s', wave_types{i}, labels_PWV{k}));
+        grid on;
+        hold off;
+    end
+end
+sgtitle(sprintf('Mean ± 1SD for Each Wave Type at %s by PWV Group', site));
+
+
+
+%% --- Part 2.3: Plot All Wave Types at Radial by Age Group ---
 % This helps visualize differences in P, U, A, PPG simultaneously
-edges = [20 35 45 55 65 80]; % Group ages by decade (or set as you wish)
+
+site = 'Radial'; % or 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
+
+edges = [20 30 40 50 60 70 80]; % Group ages by decade (or set as you wish)
 age_labels = arrayfun(@(a,b) sprintf('%d-%d',a,b-1), edges(1:end-1), edges(2:end),'uni',0);
 [~, age_bin] = histc(age, edges);
 colors = lines(length(edges)-1);
@@ -82,7 +125,7 @@ for i = 1:length(wave_types)
     subplot(2,2,i); hold on;
     for k = 1:max(age_bin)
         idx = (age_bin == k);
-        f = sprintf('%s_Radial', wave_types{i});
+        f = sprintf('%s_%s', wave_types{i}, site);
         t = (0:size(waves.(f),2)-1)/fs;
         if any(idx)
             plot(t, mean(waves.(f)(idx,:),1), 'LineWidth',2, 'Color', colors(k,:), 'DisplayName', age_labels{k});
@@ -90,7 +133,7 @@ for i = 1:length(wave_types)
     end
     xlabel('Time (s)');
     ylabel(wave_types{i});
-    title([wave_types{i} ' (Radial) by Age Group']);
+    title(sprintf('%s (%s) by Age Group', wave_types{i}, site));
     legend('show');
     hold off;
 end
@@ -133,7 +176,7 @@ ylabel('PTT (s)');
 title('PTT (Heart to Wrist) vs Age');
 grid on;
 
-%% --- Part 3: Age Dependence of Key Features from A_Radial ---
+%% --- Age Dependence of Key Features from A_Radial ---
 
 % Extract features: peak, mean, min, (add more as needed)
 A_peak = max(A_Radial, [], 2);
@@ -150,19 +193,29 @@ title('Peak Radial Area vs Age');
 [rA, pA] = corr(age, A_peak);
 fprintf('Correlation (peak A vs age): r = %.2f, p = %.3g\n', rA, pA);
 
-%% --- Part 4: Feature Table and Regression (Age + Area) to PWV ---
+%% --- Part 3.1: Precalculated Feature (Age + Area) and Linear Regression for PWV ---
+% Always select plausible rows for every variable
+age_feat   = pw_inds.age(plaus_idx);                 % Age is global (not per site)
+Amean_feat = pw_inds.Radial_Amean(plaus_idx);
+Amin_feat  = pw_inds.Radial_Amin(plaus_idx);
+Amax_feat  = pw_inds.Radial_Amax_V(plaus_idx);         % Use _Amax not _Amax_V, unless only _Amax_V exists
+PWV_feat   = PWV_cf;                                 % Already filtered
 
-T = table(age, A_peak, A_mean, A_min, PWV_cf, ...
-    'VariableNames', {'Age','Apeak','Amean','Amin','PWV_cf'});
+% Combine into table
+T = table(age_feat, Amax_feat, Amean_feat, Amin_feat, PWV_feat, ...
+    'VariableNames', {'Age','Amax','Amean','Amin','PWV_cf'});
 
 % Linear regression
-mdl = fitlm(T, 'PWV_cf ~ Age + Apeak + Amean + Amin');
+mdl = fitlm(T, 'PWV_cf ~ Age + Amax + Amean + Amin');
 disp(mdl);
 
 % Plot residuals
-figure; plotResiduals(mdl,'fitted'); title('Residuals of PWV_cf Regression');
+figure;
+plotResiduals(mdl,'fitted');
+title('Residuals of PWV_cf Regression');
 
-%% --- Part 5: Classical PPG Feature-based Tree Regression ---
+
+%% --- Part 3.2: Classical PPG Feature-based Tree Regression ---
 RI     = [haemods(plaus_idx).RI]';
 SI     = [haemods(plaus_idx).SI]';
 AGImod = [haemods(plaus_idx).AGI_mod]';
@@ -193,9 +246,9 @@ xlabel('True PWV'); ylabel('Predicted PWV');
 title('Test Set: Classical Features Tree Regression');
 grid on;
 
-%% --- Part 6: Optional: ML on Full Area Waveforms (+ Age as feature) ---
+%% --- Part 4.1: Machine Learning using Time Series on Full Area Waveforms  ---
 
-X_A = [A_Radial, age]; % Concatenate age as last feature column
+X_A = A_Radial; % Concatenate age as last feature column
 y = PWV_cf;
 
 N = size(X_A, 1);
@@ -210,15 +263,15 @@ treeA = fitrtree(X_train, y_train);
 y_predA = predict(treeA, X_test);
 
 R_A = corr(y_predA, y_test);
-fprintf('ML prediction, Area+Age: r = %.2f\n', R_A);
+fprintf('ML prediction, Area time series: r = %.2f\n', R_A);
 
 figure;
 scatter(y_test, y_predA, 40, 'filled'); grid on;
 hold on; plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--','LineWidth',2);
 xlabel('True PWV'); ylabel('Predicted PWV');
-title('Test Set: PWV Regression (A_{Radial} + Age, Tree Model)');
+title('Test Set: PWV Regression (A_{Radial}, Tree Model)');
 
-%% --- PART 7: Machine Learning on Full Wrist PPG Waveforms ---
+%% --- PART 4.2: Machine Learning using Time Series on Full Wrist PPG Waveforms ---
 
 % Input features: Each subject's full wrist PPG waveform
 X = waves.PPG_Radial;     % size: [N_subjects x N_timepoints]
@@ -260,15 +313,16 @@ title('Test Set: Predicted vs. True PWV (Regression Tree)');
 grid on;
 
 %% --- End: Example Visualization of All Waves for One Subject ---
+site = 'Brachial'; % 'Radial', 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
 subject_id = 1;
 figure('Position',[200 200 900 500]);
 for i = 1:length(wave_types)
     subplot(2,2,i);
-    f = sprintf('%s_Radial', wave_types{i});
+    f = sprintf('%s_%s', wave_types{i}, site);
     t = (0:size(waves.(f),2)-1)/fs;
     plot(t, waves.(f)(subject_id,:), 'LineWidth',2);
     xlabel('Time (s)'); ylabel(wave_types{i});
-    title(sprintf('%s (Radial), Subject #%d, Age %d',wave_types{i},subject_id,age(subject_id)));
+    title(sprintf('%s (%s), Subject #%d, Age %d',wave_types{i},site, subject_id,age(subject_id)));
 end
 
 %% ---------------------------
