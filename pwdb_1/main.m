@@ -271,7 +271,7 @@ hold on; plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--','Lin
 xlabel('True PWV'); ylabel('Predicted PWV');
 title('Test Set: PWV Regression (A_{Radial}, Tree Model)');
 
-%% --- PART 4.2: Machine Learning using Time Series on Full Wrist PPG Waveforms ---
+%% --- Part 4.2: Machine Learning using Time Series on Full Wrist PPG Waveforms ---
 
 % Input features: Each subject's full wrist PPG waveform
 X = waves.PPG_Radial;     % size: [N_subjects x N_timepoints]
@@ -313,8 +313,8 @@ title('Test Set: Predicted vs. True PWV (Regression Tree)');
 grid on;
 
 %% --- Example Visualization of All Waves for One Subject ---
-site = 'Brachial'; % 'Radial', 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
-subject_id = 1;
+site = 'Radial'; % 'Radial', 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
+subject_id = 6;
 figure('Position',[200 200 900 500]);
 for i = 1:length(wave_types)
     subplot(2,2,i);
@@ -325,12 +325,11 @@ for i = 1:length(wave_types)
     title(sprintf('%s (%s), Subject #%d, Age %d',wave_types{i},site, subject_id,age(subject_id)));
 end
 
-%% Example: Using PulseAnalyse10 on a Single Radial PPG Beat to extract fiducial points and calculated indexes
-
-addpath('/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/pwdb-master/pwdb_v0.1/Additional Functions/');
+%% Part 5: Use of Signal Processing Algorithms to extract features, indexes from PW
+addpath('/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/algorithms/');
 
 % --- Choose a subject and extract their PPG waveform ---
-subject_idx = 1; % Or any plausible subject index
+subject_idx = 6; % Or any plausible subject index
 signal = waves.PPG_Radial(subject_idx, :);
 
 % --- Prepare the structure for analysis ---
@@ -338,6 +337,8 @@ S = struct();
 S.v = signal(:); % Column vector
 S.fs = fs;
 % S.ht = ...; % (Optional) subject's height in meters
+
+%% Part 5.1: Using PulseAnalyse10 on a Single Radial PPG Beat to extract fiducial points and calculated indexes
 
 options = struct();
 options.do_plot = true; % Enable plotting
@@ -358,3 +359,40 @@ legend('Signal','Dicrotic Notch');
 title('PPG with Detected Dicrotic Notch');
 xlabel('Sample'); ylabel('Amplitude');
 hold off;
+
+%% Part 5.2: Gaussian Fitting for Second Peak (P2) Detection
+
+[fitCurve, params, p1_idx, p2_idx] = fitTwoGaussiansPPG(S.v);
+
+figure;
+plot(S.v, 'b', 'DisplayName', 'Original Signal'); hold on;
+plot(fitCurve, 'r--', 'DisplayName', 'Fitted 2-Gaussian');
+plot([p1_idx, p2_idx], fitCurve([p1_idx, p2_idx]), 'ko', 'MarkerFaceColor','g','MarkerSize',10);
+legend('show');
+title('Gaussian Fitting: P1 & P2 Detection');
+xlabel('Sample'); ylabel('Amplitude');
+
+% (You can use p2_idx as a robust estimate for the second peak location)
+
+%% Part 5.3: Frequency and Morphology Features
+features = extractFreqMorphFeatures(S.v, S.fs);
+disp('Frequency and Morphology Features:');
+disp(features);
+
+%% Part 5.4 Signal Quality Index (SQI) & Artifact Rejection
+% (Assume you have a template - e.g., average of several good beats)
+if exist('beats', 'var') % If you have a matrix of beats
+    template = mean(beats,1);
+else
+    template = S.v; % Fallback: use current beat as its own template
+end
+
+[sqi, isGood] = computeSimpleSQI(S.v, template);
+
+fprintf('SQI value: %.2f | Is Good: %d\n', sqi, isGood);
+
+if ~isGood
+    warning('This pulse may be of low quality or corrupted!');
+end
+
+
