@@ -312,7 +312,7 @@ ylabel('Predicted PWV');
 title('Test Set: Predicted vs. True PWV (Regression Tree)');
 grid on;
 
-%% --- End: Example Visualization of All Waves for One Subject ---
+%% --- Example Visualization of All Waves for One Subject ---
 site = 'Brachial'; % 'Radial', 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
 subject_id = 1;
 figure('Position',[200 200 900 500]);
@@ -325,6 +325,36 @@ for i = 1:length(wave_types)
     title(sprintf('%s (%s), Subject #%d, Age %d',wave_types{i},site, subject_id,age(subject_id)));
 end
 
-%% ---------------------------
-% This script is now modular: you can easily add new sites, new wave types, new features, and advanced ML models as desired.
-% For deeper analyses: try frequency domain features, time-to-peak, dicrotic notch, area under curve, or combine features from multiple wave types/sites.
+%% Example: Using PulseAnalyse10 on a Single Radial PPG Beat to extract fiducial points and calculated indexes
+
+addpath('/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/pwdb-master/pwdb_v0.1/Additional Functions/');
+
+% --- Choose a subject and extract their PPG waveform ---
+subject_idx = 1; % Or any plausible subject index
+signal = waves.PPG_Radial(subject_idx, :);
+
+% --- Prepare the structure for analysis ---
+S = struct();
+S.v = signal(:); % Column vector
+S.fs = fs;
+% S.ht = ...; % (Optional) subject's height in meters
+
+options = struct();
+options.do_plot = true; % Enable plotting
+
+% --- Run the pulse analysis function ---
+[cv_inds, fid_pts, pulses, S_filt] = PulseAnalyse10(S, options);
+
+% --- Access key outputs ---
+disp(cv_inds);     % Show calculated indices
+disp(fid_pts);     % Show detected fiducial points
+disp(pulses);      % Show pulse/beat info
+
+% Example: Find and plot the dicrotic notch index
+dic_idx = fid_pts.dic;
+figure; plot(S.v);
+hold on; plot(dic_idx, S.v(dic_idx), 'ro', 'MarkerSize', 8, 'DisplayName', 'Dicrotic Notch');
+legend('Signal','Dicrotic Notch');
+title('PPG with Detected Dicrotic Notch');
+xlabel('Sample'); ylabel('Amplitude');
+hold off;
