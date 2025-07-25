@@ -75,7 +75,6 @@ end
 %% --- Part 2.2: 4x3 Plot: Each Wave Type (row) by PWV Group (col), with mean ± std ---
 
 site = 'Radial'; % Change as needed
-wave_types = {'P', 'U', 'A', 'PPG'}; % Change as needed
 
 edges_PWV = quantile(PWV_cf, [0 1/3 2/3 1]);
 [~, bin_PWV] = histc(PWV_cf, edges_PWV);
@@ -176,23 +175,6 @@ ylabel('PTT (s)');
 title('PTT (Heart to Wrist) vs Age');
 grid on;
 
-%% --- Age Dependence of Key Features from A_Radial ---
-
-% Extract features: peak, mean, min, (add more as needed)
-A_peak = max(A_Radial, [], 2);
-A_mean = mean(A_Radial, 2);
-A_min = min(A_Radial, [], 2);
-
-% Plot A_peak vs Age (scatter)
-figure;
-scatter(age, A_peak, 30, 'b', 'filled'); grid on;
-xlabel('Age (years)'); ylabel('Radial Area Peak (m^2)');
-title('Peak Radial Area vs Age');
-
-% Correlation
-[rA, pA] = corr(age, A_peak);
-fprintf('Correlation (peak A vs age): r = %.2f, p = %.3g\n', rA, pA);
-
 %% --- Part 3.1: Precalculated Feature (Age + Area) and Linear Regression for PWV ---
 % Always select plausible rows for every variable
 age_feat   = pw_inds.age(plaus_idx);                 % Age is global (not per site)
@@ -211,7 +193,7 @@ disp(mdl);
 
 % Plot residuals
 figure;
-plotResiduals(mdl,'fitted');
+plotResiduals(mdl,'fitted'); % Actual PWV_cf − Predicted PWV_cf
 title('Residuals of PWV_cf Regression');
 
 
@@ -263,7 +245,7 @@ treeA = fitrtree(X_train, y_train);
 y_predA = predict(treeA, X_test);
 
 R_A = corr(y_predA, y_test);
-fprintf('ML prediction, Area time series: r = %.2f\n', R_A);
+fprintf('ML prediction, Area Radial time series: r = %.2f\n', R_A);
 
 figure;
 scatter(y_test, y_predA, 40, 'filled'); grid on;
@@ -299,7 +281,7 @@ y_pred = predict(tree, X_test);
 
 % Evaluate model performance
 R = corr(y_pred, y_test);   % Correlation coefficient
-fprintf('Correlation (r) between predicted and true PWV: %.2f\n', R);
+fprintf('ML prediction, PPG Radial time series: %.2f\n', R);
 
 % Plot true vs. predicted PWV for the test set
 figure;
@@ -329,7 +311,7 @@ end
 addpath('/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/algorithms/');
 
 % --- Choose a subject and extract their PPG waveform ---
-subject_idx = 6; % Or any plausible subject index
+subject_idx = 1; % Or any plausible subject index
 signal = waves.PPG_Radial(subject_idx, :);
 
 % --- Prepare the structure for analysis ---
@@ -372,7 +354,7 @@ legend('show');
 title('Gaussian Fitting: P1 & P2 Detection');
 xlabel('Sample'); ylabel('Amplitude');
 
-% (You can use p2_idx as a robust estimate for the second peak location)
+% (You can use p2_idx as an estimate for the second peak location)
 
 %% Part 5.3: Frequency and Morphology Features
 features = extractFreqMorphFeatures(S.v, S.fs);

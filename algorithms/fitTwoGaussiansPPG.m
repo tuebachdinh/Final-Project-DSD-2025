@@ -77,7 +77,7 @@ function [fitCurve, params, p1_loc, p2_loc, gof] = fitTwoGaussiansPPG(signal, fs
     %     title(sprintf('Two-Gaussian Fitting (RMSE=%.3g, R^2=%.2f)', RMSE, R2));
     %     hold off;
     % end
-
+    fprintf('Two-Gaussian Fitting (RMSE=%.3g, R^2=%.2f)', RMSE, R2);
     % Warn if fit is poor
     if R2 < 0.90
         warning('Poor Gaussian fit: R^2=%.2f. Result may be unreliable.', R2);
