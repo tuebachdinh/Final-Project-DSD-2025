@@ -114,20 +114,21 @@ sgtitle(sprintf('Mean ± 1SD for Each Wave Type at %s by PWV Group', site));
 
 site = 'Radial'; % or 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
 
-edges = [20 30 40 50 60 70 80]; % Group ages by decade (or set as you wish)
-age_labels = arrayfun(@(a,b) sprintf('%d-%d',a,b-1), edges(1:end-1), edges(2:end),'uni',0);
-[~, age_bin] = histc(age, edges);
-colors = lines(length(edges)-1);
+unique_ages = [25 35 45 55 65 75];
+age_labels = arrayfun(@(a) sprintf('%d', a), unique_ages, 'uni', 0);
+colors = lines(length(unique_ages));
 
 figure('Position',[100 100 900 700]);
 for i = 1:length(wave_types)
     subplot(2,2,i); hold on;
-    for k = 1:max(age_bin)
-        idx = (age_bin == k);
+    for k = 1:length(unique_ages)
+        idx = (age == unique_ages(k));
         f = sprintf('%s_%s', wave_types{i}, site);
         t = (0:size(waves.(f),2)-1)/fs;
         if any(idx)
-            plot(t, mean(waves.(f)(idx,:),1), 'LineWidth',2, 'Color', colors(k,:), 'DisplayName', age_labels{k});
+            plot(t, mean(waves.(f)(idx,:),1), ...
+                 'LineWidth',2, 'Color', colors(k,:), ...
+                 'DisplayName', age_labels{k});
         end
     end
     xlabel('Time (s)');
@@ -137,7 +138,8 @@ for i = 1:length(wave_types)
     hold off;
 end
 
-%% --- Part 2.3: Insights about time delay ---
+
+%% --- Part 2.4: Insights about time delay ---
 
 % Using the onset times, and manually calculate the PTT
 % Get pulse onset times (in seconds) for each site, each subject
