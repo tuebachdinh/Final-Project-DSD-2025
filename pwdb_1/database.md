@@ -120,7 +120,7 @@ Field | Contents
 
 In each field name, *#####* denotes an arterial site (such as *AorticRoot*). The locations of these sites are as follows:
 
-<a name="arterial_sites" />
+
 
 Site | Location
 --- | ---
@@ -224,7 +224,7 @@ The data is organized identically to the `pwdb_pw_indices.csv` spreadsheet.
 ### Column Format
 
 Most column headers consist of three parts, separated by underscores, e.g., `AorticRoot_SBP_V`:
-- **Measurement site** (e.g., `AorticRoot`), as defined in the [arterial sites](#arterial_sites) section.
+- **Measurement site** (e.g., `AorticRoot`), as defined in the above section.
 - **Variable type** (e.g., `SBP`), as defined below.
 - **Value or time**:
     - `V`: value (actual parameter value)

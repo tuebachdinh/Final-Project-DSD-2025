@@ -14,6 +14,9 @@ plaus_idx = find(plausible);
 age = [haemods(plaus_idx).age]';
 PWV_cf = [haemods(plaus_idx).PWV_cf]';
 
+%Other paths example
+PWV_ba = [haemods(plaus_idx).PWV_ba]';
+
 % Define wave types and sites to analyze
 wave_types = {'P', 'U', 'A', 'PPG'};
 sites = {'AorticRoot', 'Radial', 'Brachial', 'Femoral', 'Digital'};
@@ -163,7 +166,7 @@ fprintf('PTT (from pw_inds, aortic root to radial, positive only): mean %.3f s (
     mean(PTT_pwinds_positive), numel(PTT_pwinds_positive));
 
 figure;
-histogram(PTT_aor_to_rad, 40);
+histogram(PTT_pwinds_positive, 40);
 xlabel('PTT (AorticRoot \rightarrow Radial) [s]');
 ylabel('Count');
 title('Distribution of Pulse Transit Time (PTT) from Heart to Wrist');
