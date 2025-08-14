@@ -45,74 +45,105 @@ end
 A_Radial = waves.A_Radial; % time-normalized to a single cardiac cycle/1 normalized heartbeat
 t_A = (0:size(A_Radial,2)-1) / fs;
 
-%% --- Part 2.1 Plot All Wave Types at Radial by Stiffness Group (PWV tertile) ---
-% This helps visualize differences in P, U, A, PPG simultaneously by stiffness
+%% --- Part 2.1: Plot all wave types at chosen site with visible bands by PWV group ---
 
-site = 'Radial'; % or 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
+% Choose site to visualize
+site = 'Radial';   % 'AorticRoot','Brachial','Femoral','Digital' also valid
 
-edges_PWV = quantile(PWV_cf, [0 1/3 2/3 1]);
-[~, bin_PWV] = histc(PWV_cf, edges_PWV);
+% ----- PWV tertiles, labels, colors -----
+pwv = PWV_cf(:);
+valid = ~isnan(pwv);
+q = quantile(pwv(valid), [1/3 2/3]);
 
-labels_PWV = {'Low PWV','Medium PWV','High PWV'};
-colors_PWV = lines(3); % 3 colors for 3 groups
+bin_PWV = nan(size(pwv));
+bin_PWV(pwv <= q(1))                 = 1;
+bin_PWV(pwv > q(1) & pwv <= q(2))    = 2;
+bin_PWV(pwv > q(2))                  = 3;
 
+labels_PWV = {
+    sprintf('Low PWV (%.1f–%.1f m/s)', min(pwv(valid)), q(1))
+    sprintf('Medium PWV (%.1f–%.1f m/s)', q(1), q(2))
+    sprintf('High PWV (%.1f–%.1f m/s)', q(2), max(pwv(valid)))
+};
+if ~exist('colors_PWV','var') || isempty(colors_PWV)
+    colors_PWV = lines(3);  % 3 distinct colors
+end
+
+% ----- shading mode: choose one -----
+shade_mode = 'sd';   % 'ci' (true 95% CI), 'sd' (±K·SD), or 'ci_x5' (scaled CI for visibility)
+K = 0.5;               % only used if shade_mode = 'sd'
+
+% ----- Plot -----
 figure('Position',[100 100 900 700]);
-for i = 1:length(wave_types)
-    subplot(2,2,i); hold on;
-    for k = 1:3
-        idx = (bin_PWV == k);
-        f = sprintf('%s_%s', wave_types{i}, site);
-        t = (0:size(waves.(f),2)-1)/fs;
-        if any(idx)
-            plot(t, mean(waves.(f)(idx,:),1), 'LineWidth',2, ...
-                'Color', colors_PWV(k,:), 'DisplayName', labels_PWV{k});
-        end
-    end
-    xlabel('Time (s)');
-    ylabel(wave_types{i});
-    title(sprintf('%s (%s) by Stiffness Group', wave_types{i}, site));
-    legend('show');
-    hold off;
-end
+for i = 1:numel(wave_types)
+    subplot(2,2,i); cla; hold on;
 
-%% --- Part 2.2: 4x3 Plot: Each Wave Type (row) by PWV Group (col), with mean ± std ---
-
-site = 'Radial'; % Change as needed
-
-edges_PWV = quantile(PWV_cf, [0 1/3 2/3 1]);
-[~, bin_PWV] = histc(PWV_cf, edges_PWV);
-
-labels_PWV = {'Low PWV','Medium PWV','High PWV'};
-
-figure('Position',[100 100 1600 800]);
-for i = 1:length(wave_types)
     f = sprintf('%s_%s', wave_types{i}, site);
-    mat = waves.(f);
-    t = (0:size(mat,2)-1)/fs;
+    if ~isfield(waves, f) || isempty(waves.(f))
+        title(sprintf('%s (%s) missing', wave_types{i}, site));
+        axis off; continue;
+    end
+
+    W = waves.(f);                       % [subjects x time]
+    t = (0:size(W,2)-1)/fs;
+
     for k = 1:3
         idx = (bin_PWV == k);
-        data_group = mat(idx,:);
-        mean_w = mean(data_group,1);
-        std_w = std(data_group,0,1);
+        if ~any(idx), continue; end
 
-        subplot(length(wave_types),3,(i-1)*3 + k); hold on;
-        % Shaded area: mean ± std
-        fill([t, fliplr(t)], ...
-             [mean_w+std_w, fliplr(mean_w-std_w)], ...
-             [0.6 0.6 0.9], 'FaceAlpha',0.3, 'EdgeColor','none');
-        plot(t, mean_w, 'b', 'LineWidth',2);
-        xlabel('Time (s)');
-        ylabel(wave_types{i});
-        title(sprintf('%s - %s', wave_types{i}, labels_PWV{k}));
-        grid on;
-        hold off;
+        data_group = W(idx, :);
+        n = sum(idx);
+        mean_w = mean(data_group, 1, 'omitnan');
+        std_w  = std(data_group, 0, 1, 'omitnan');
+
+        % ---- band width selection ----
+        switch shade_mode
+            case 'ci'
+                band = 1.96 * (std_w ./ sqrt(n));
+                band_note = '95% CI';
+            case 'sd'
+                band = K * std_w;
+                band_note = sprintf('±%.1fσ band', K);
+            case 'ci_x5'
+                band = 5 * 1.96 * (std_w ./ sqrt(n));
+                band_note = '95% CI (×5 for visibility)';
+            otherwise
+                band = 1.96 * (std_w ./ sqrt(n));
+                band_note = '95% CI';
+        end
+
+        % % ---- shaded band (kept out of legend) ----
+        fill([t, fliplr(t)], [mean_w+band, fliplr(mean_w-band)], ...
+            colors_PWV(k,:), 'FaceAlpha',0.20, 'EdgeColor','none', ...
+            'HandleVisibility','off');
+
+        % optional boundary lines (also hidden from legend)
+        plot(t, mean_w+band, ':', 'Color', colors_PWV(k,:), 'HandleVisibility','off');
+        plot(t, mean_w-band, ':', 'Color', colors_PWV(k,:), 'HandleVisibility','off');
+
+        % ---- mean line (legend item) ----
+        plot(t, mean_w, 'LineWidth', 3, 'Color', colors_PWV(k,:), ...
+            'DisplayName', sprintf('%s', labels_PWV{k}));
     end
+
+    xlabel('Time (s)');
+    switch wave_types{i}
+        case 'P',   ylabel('Pressure (mmHg)');
+        case 'U',   ylabel('Flow velocity (m/s)');
+        case 'A',   ylabel('Luminal area (m^3)');   % consider rescaling to ×10^{-6} if tiny
+        case 'PPG', ylabel('PPG (a.u.)');
+    end
+    title(sprintf('%s (%s) by Stiffness Group', wave_types{i}, site));
+    grid on; box on;
+    axis tight;
+    yl = ylim; ylim(yl + [-1 1]*0.05*range(yl));   % small padding
+    legend('Location','best');
 end
-sgtitle(sprintf('Mean ± 1SD for Each Wave Type at %s by PWV Group', site));
+sgtitle(sprintf('Waveforms at %s with %s by PWV Group', site, band_note));  % sgtitle can't render × in some fonts
 
 
 
-%% --- Part 2.3: Plot All Wave Types at Radial by Age Group ---
+%% --- Part 2.2: Plot All Wave Types at Radial by Age Group ---
 % This helps visualize differences in P, U, A, PPG simultaneously
 
 site = 'Radial'; % or 'Brachial', 'AorticRoot', 'Femoral', 'Digital', etc.
@@ -135,14 +166,22 @@ for i = 1:length(wave_types)
         end
     end
     xlabel('Time (s)');
-    ylabel(wave_types{i});
+    switch wave_types{i}
+        case 'P',   ylabel('Pressure (mmHg)');
+        case 'U',   ylabel('Flow velocity (m/s)');
+        case 'A',   ylabel('Luminal area (m^3)');   % consider rescaling to ×10^{-6} if tiny
+        case 'PPG', ylabel('PPG (a.u.)');
+    end
     title(sprintf('%s (%s) by Age Group', wave_types{i}, site));
-    legend('show');
+    grid on; box on;
+    axis tight;
+    yl = ylim; ylim(yl + [-1 1]*0.05*range(yl));   % small padding
+    legend('Location','best');
     hold off;
 end
+%sgtitle(sprintf('Waveforms at %s by Age Group', site))
 
-
-%% --- Part 2.4: Insights about time delay ---
+%% --- Part 2.3: Insights about time delay ---
 
 % Using the onset times, and manually calculate the PTT
 % Get pulse onset times (in seconds) for each site, each subject
@@ -172,13 +211,19 @@ ylabel('Count');
 title('Distribution of Pulse Transit Time (PTT) from Heart to Wrist');
 grid on;
 
-%% Scatter Plot: PTT vs Age
+%% Box Plot: PTT vs Age
+unique_ages = unique(age); % should be [25 35 45 55 65 75]
+
+% Create boxplot directly by grouping on the exact age values
 figure;
-scatter(age, PTT_aor_to_rad, 10, 'filled');
+boxplot(PTT_aor_to_rad, age, ...
+    'Labels', string(unique_ages));
+
 xlabel('Age (years)');
 ylabel('PTT (s)');
 title('PTT (Heart to Wrist) vs Age');
 grid on;
+
 
 %% --- Part 3.1: Precalculated Feature (Age + Area) and Linear Regression for PWV ---
 % Always select plausible rows for every variable
