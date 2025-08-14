@@ -491,22 +491,23 @@ SI     = [haemods(plaus_idx).SI]';
 AGImod = [haemods(plaus_idx).AGI_mod]';
 
 % -- PPG sdPPG & morphology (from pw_inds) --
-PPGa   = pw_inds.PPGa(plaus_idx);
-PPGb   = pw_inds.PPGb(plaus_idx);
-PPGc   = pw_inds.PPGc(plaus_idx);
-PPGd   = pw_inds.PPGd(plaus_idx);
-PPGe   = pw_inds.PPGe(plaus_idx);
-PPGsys = pw_inds.PPGsys(plaus_idx);
-PPGdia = pw_inds.PPGdia(plaus_idx);
-PPGdic = pw_inds.PPGdic(plaus_idx);
-PPGms  = pw_inds.PPGms(plaus_idx);
+PPGa   = pw_inds.Radial_PPGa_V(plaus_idx);
+PPGb   = pw_inds.Radial_PPGb_V(plaus_idx);
+PPGc   = pw_inds.Radial_PPGc_V(plaus_idx);
+PPGd   = pw_inds.Radial_PPGd_V(plaus_idx);
+PPGe   = pw_inds.Radial_PPGe_V(plaus_idx);
+PPGsys = pw_inds.Radial_PPGsys_V(plaus_idx);
+PPGdia = pw_inds.Radial_PPGdia_V(plaus_idx);
+PPGdic = pw_inds.Radial_PPGdic_V(plaus_idx);
+PPGms  = pw_inds.Radial_PPGms_V(plaus_idx);
 
 % -- Area (A) features at wrist (Radial) --
-Amax   = getFieldSafe(pw_inds, 'Radial_Amax',  plaus_idx, 'Radial_Amax_V'); % fallback name if needed
-Amin   = getFieldSafe(pw_inds, 'Radial_Amin',  plaus_idx, 'Radial_Amin_V');
-Amean  = getFieldSafe(pw_inds, 'Radial_Amean', plaus_idx, 'Radial_Amean_V');
+Amax   = pw_inds.Radial_Amax_V(plaus_idx);   
+Amin   = pw_inds.Radial_Amin(plaus_idx);
+Amean  = pw_inds.Radial_Amean(plaus_idx);
 Astk   = Amax - Amin;                                % stroke area change
-Aosc   = (Amax - Amin) ./ max(Amean, eps);           % relative oscillation
+Aosc   = (Amax - Amin) ./ max(Amean, eps);           % relative oscillation 
+
 
 % -- Timing features --
 if ~exist('PTT_aor_to_rad','var') || isempty(PTT_aor_to_rad)
