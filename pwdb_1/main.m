@@ -45,8 +45,9 @@ end
 A_Radial = waves.A_Radial; % time-normalized to a single cardiac cycle/1 normalized heartbeat
 t_A = (0:size(A_Radial,2)-1) / fs;
 
-%% --- Part 2.1: Plot all wave types at chosen site with visible bands by PWV group ---
 
+
+%% --- Part 2.1: Plot all wave types at chosen site with visible bands by PWV group ---
 % Choose site to visualize
 site = 'Radial';   % 'AorticRoot','Brachial','Femoral','Digital' also valid
 
@@ -181,17 +182,13 @@ for i = 1:length(wave_types)
 end
 %sgtitle(sprintf('Waveforms at %s by Age Group', site))
 
-%% --- Part 2.3: Insights about time delay ---
 
+%% --- Part 2.3: Insights about time delay ---
 % Using the onset times, and manually calculate the PTT
 % Get pulse onset times (in seconds) for each site, each subject
 onsets = data.waves.onset_times;
-
-% Get onset times at aortic root and at wrist (radial)
 onset_aortic = onsets.P_AorticRoot(plaus_idx); % [Nsubjects x 1], in sec
 onset_radial = onsets.P_Radial(plaus_idx);     % [Nsubjects x 1], in sec
-
-% Pulse transit time: heart (aortic root) to wrist (radial)
 PTT_aor_to_rad = onset_radial - onset_aortic;  % [Nsubjects x 1], in sec
 fprintf('Mean PTT (aortic root to radial): %.3f s (std: %.3f s)\n', ...
     mean(PTT_aor_to_rad), std(PTT_aor_to_rad));
@@ -213,8 +210,6 @@ grid on;
 
 %% Box Plot: PTT vs Age
 unique_ages = unique(age); % should be [25 35 45 55 65 75]
-
-% Create boxplot directly by grouping on the exact age values
 figure;
 boxplot(PTT_aor_to_rad, age, ...
     'Labels', string(unique_ages));
@@ -252,7 +247,6 @@ RI     = [haemods(plaus_idx).RI]';
 SI     = [haemods(plaus_idx).SI]';
 AGImod = [haemods(plaus_idx).AGI_mod]';
 
-% ML using only classical features
 X = [RI, SI, AGImod];  % Only classical features
 y = PWV_cf;
 N = size(X,1);
@@ -428,3 +422,395 @@ if ~isGood
 end
 
 
+
+
+%% --- Part 6: Feature-based Machine Learning (PPG + Area + Timing) ---
+% Goal: Build a robust feature set (cheap to compute), train light models,
+% and evaluate R^2 / RMSE / MAE. Save the best model for later transfer.
+
+rng(42);  % reproducibility
+
+% ---------- 6.1 Assemble features per subject ----------
+Nsubj = numel(plaus_idx);
+
+% -- PPG classical (from haemods) --
+RI     = [haemods(plaus_idx).RI]';
+SI     = [haemods(plaus_idx).SI]';
+AGImod = [haemods(plaus_idx).AGI_mod]';
+
+% -- PPG sdPPG & morphology (from pw_inds) --
+PPGa   = pw_inds.PPGa(plaus_idx);
+PPGb   = pw_inds.PPGb(plaus_idx);
+PPGc   = pw_inds.PPGc(plaus_idx);
+PPGd   = pw_inds.PPGd(plaus_idx);
+PPGe   = pw_inds.PPGe(plaus_idx);
+PPGsys = pw_inds.PPGsys(plaus_idx);
+PPGdia = pw_inds.PPGdia(plaus_idx);
+PPGdic = pw_inds.PPGdic(plaus_idx);
+PPGms  = pw_inds.PPGms(plaus_idx);
+
+% -- Area (A) features at wrist (Radial) --
+Amax   = getFieldSafe(pw_inds, 'Radial_Amax',  plaus_idx, 'Radial_Amax_V'); % fallback name if needed
+Amin   = getFieldSafe(pw_inds, 'Radial_Amin',  plaus_idx, 'Radial_Amin_V');
+Amean  = getFieldSafe(pw_inds, 'Radial_Amean', plaus_idx, 'Radial_Amean_V');
+Astk   = Amax - Amin;                                % stroke area change
+Aosc   = (Amax - Amin) ./ max(Amean, eps);           % relative oscillation
+
+% -- Timing features --
+if ~exist('PTT_aor_to_rad','var') || isempty(PTT_aor_to_rad)
+    onset_aortic = data.waves.onset_times.P_AorticRoot(plaus_idx);
+    onset_radial = data.waves.onset_times.P_Radial(plaus_idx);
+    PTT_aor_to_rad = onset_radial - onset_aortic;    % secs
+end
+HR = [haemods(plaus_idx).HR]';                        % bpm
+LVET = [haemods(plaus_idx).LVET]';                    % ms (proxy for systole dur)
+PFT  = [haemods(plaus_idx).PFT]';                     % ms (time of peak aortic flow)
+
+% -- Coupling features between PPG & Area (wrist) --
+PPG_R = waves.PPG_Radial;     % [N x T]
+A_R   = waves.A_Radial;       % [N x T]
+Tpts  = size(PPG_R,2);
+tgrid = (0:Tpts-1)./fs;
+
+% peak timings (in seconds)
+[~, ppg_pk_idx] = max(PPG_R, [], 2);
+[~,  A_pk_idx ] = max(A_R,   [], 2);
+t_ppg_pk = tgrid(ppg_pk_idx)';
+t_A_pk   = tgrid(A_pk_idx)';
+lag_A_vs_PPG = t_A_pk - t_ppg_pk;             % +ve: A peaks after PPG
+
+% simple cross-correlation over systole (use first half of the beat)
+mid_idx = round(Tpts*0.6);
+xcorr_pp = nan(Nsubj,1);
+for ii = 1:Nsubj
+    x1 = detrend(PPG_R(ii,1:mid_idx));
+    x2 = detrend(A_R(ii,1:mid_idx));
+    c  = corr(x1(:), x2(:), 'rows','complete');
+    xcorr_pp(ii) = c;
+end
+
+% -- Optional Gaussian fit features on PPG (cheap & robust) --
+% Normalize each beat (0-1) before fitting to stabilize amplitudes
+A1 = nan(Nsubj,1); MU1 = nan(Nsubj,1); S1 = nan(Nsubj,1);
+A2 = nan(Nsubj,1); MU2 = nan(Nsubj,1); S2 = nan(Nsubj,1);
+P1samp = nan(Nsubj,1); P2samp = nan(Nsubj,1);
+for ii = 1:Nsubj
+    x = PPG_R(ii,:)';
+    % min-max normalize
+    xx = x; 
+    rngv = max(xx)-min(xx);
+    if rngv > 0, xx = (xx - min(xx)) / rngv; end
+    try
+        [fitCurve, params, p1_loc, p2_loc, gof] = fitTwoGaussiansPPG(xx, fs);
+        A1(ii)    = params(1); MU1(ii) = params(2)/fs; S1(ii) = params(3)/fs;
+        A2(ii)    = params(4); MU2(ii) = params(5)/fs; S2(ii) = params(6)/fs;
+        P1samp(ii)= p1_loc;    P2samp(ii)= p2_loc;
+    catch
+        % leave NaNs; handled later
+    end
+end
+% Convert P1/P2 sample indices to sec (relative to beat start)
+tP1 = P1samp./fs;  tP2 = P2samp./fs;  dTPeaks = tP2 - tP1;
+
+% -- Build feature table --
+y = PWV_cf(:);                               % target (m/s)
+Xtbl = table( ...
+    age(:), HR(:), LVET(:), PFT(:), ...
+    RI(:), SI(:), AGImod(:), ...
+    PPGa(:), PPGb(:), PPGc(:), PPGd(:), PPGe(:), ...
+    PPGsys(:), PPGdia(:), PPGdic(:), PPGms(:), ...
+    Amax(:), Amin(:), Amean(:), Astk(:), Aosc(:), ...
+    PTT_aor_to_rad(:), ...
+    t_ppg_pk(:), t_A_pk(:), lag_A_vs_PPG(:), xcorr_pp(:), ...
+    A1, MU1, S1, A2, MU2, S2, tP1, tP2, dTPeaks, ...
+    y, ...
+    'VariableNames', { ...
+    'Age','HR','LVET','PFT', ...
+    'RI','SI','AGImod', ...
+    'PPGa','PPGb','PPGc','PPGd','PPGe', ...
+    'PPGsys','PPGdia','PPGdic','PPGms', ...
+    'Amax','Amin','Amean','Astk','Aosc', ...
+    'PTT_hw', ...
+    'tPPGpk','tApk','lagAminusPPG','xcorrSyst', ...
+    'G_A1','G_MU1','G_S1','G_A2','G_MU2','G_S2','tP1','tP2','dTPeaks', ...
+    'PWV_cf'});
+
+% Clean NaNs/Infs
+bad = any(~isfinite(Xtbl{:,:}), 2);
+Xtbl = Xtbl(~bad, :);
+
+% ---------- 6.2 Train/test split ----------
+N = height(Xtbl);
+cv = cvpartition(N, 'HoldOut', 0.2);
+Xnames = Xtbl.Properties.VariableNames;
+Xnames(end) = [];                     % remove PWV_cf from predictors
+Yname = 'PWV_cf';
+Xtrain = Xtbl(training(cv), Xnames);
+Ytrain = Xtbl{training(cv), Yname};
+Xtest  = Xtbl(test(cv), Xnames);
+Ytest  = Xtbl{test(cv),  Yname};
+
+% z-score standardize numeric predictors (store params for deployment)
+[Ztrain, muX, stdX] = zscore(table2array(Xtrain));
+Ztest = (table2array(Xtest) - muX) ./ stdX;
+
+% ---------- 6.3 Models (light & deployable) ----------
+results = struct();
+
+% (a) Ridge Regression
+ridgeMdl = fitrlinear(Ztrain, Ytrain, ...
+    'Learner','leastsquares', 'Regularization','ridge', ...
+    'KFold',5, 'Solver','lbfgs');
+ridgeTrained = fitrlinear(Ztrain, Ytrain, ...
+    'Learner','leastsquares', 'Regularization','ridge', ...
+    'Solver','lbfgs');
+yp_ridge = predict(ridgeTrained, Ztest);
+results.Ridge = evalReg(Ytest, yp_ridge, 'Ridge');
+
+% (b) Lasso (lambda via internal CV)
+lassoMdl = fitrlinear(Ztrain, Ytrain, ...
+    'Learner','leastsquares','Regularization','lasso', ...
+    'KFold',5, 'Solver','sparsa');
+% refit with best lambda (mean)
+bestLambda = mean(cell2mat(lassoMdl.ModelParameters.Lambda));
+lassoTrained = fitrlinear(Ztrain, Ytrain, ...
+    'Learner','leastsquares','Regularization','lasso', ...
+    'Lambda', bestLambda, 'Solver','sparsa');
+yp_lasso = predict(lassoTrained, Ztest);
+results.Lasso = evalReg(Ytest, yp_lasso, 'Lasso');
+
+% (c) Partial Least Squares (PLS) with small latent dims
+maxComps = min(10, size(Ztrain,2));
+[Rpls,~,~,~,beta, PCTVAR] = plsregress(Ztrain, Ytrain, min(6,maxComps));
+yp_pls = [ones(size(Ztest,1),1) Ztest]*beta;
+results.PLS = evalReg(Ytest, yp_pls, sprintf('PLS (%d comps)', size(beta,1)-1));
+
+% (d) Small Tree
+treeMdl = fitrtree(Ztrain, Ytrain, 'MinLeafSize', 50, 'MaxNumSplits', 40);
+yp_tree = predict(treeMdl, Ztest);
+results.Tree = evalReg(Ytest, yp_tree, 'Tree (small)');
+
+% (e) Shallow Ensemble (LSBoost) — keep tiny to avoid overfit
+ensMdl = fitrensemble(Ztrain, Ytrain, 'Method','LSBoost', ...
+    'NumLearningCycles', 60, 'LearnRate', 0.05, ...
+    'MinLeafSize', 80, 'MaxNumSplits', 20);
+yp_ens = predict(ensMdl, Ztest);
+results.Ensemble = evalReg(Ytest, yp_ens, 'Ensemble (shallow)');
+
+% ---------- 6.4 Compare and report ----------
+fprintf('\n=== Part 6 Results (Test Set) ===\n');
+modelsList = fieldnames(results);
+bestName = modelsList{1}; bestR2 = results.(bestName).R2;
+for i = 1:numel(modelsList)
+    R = results.(modelsList{i});
+    fprintf('%-20s  R^2 = %.3f | MAE = %.3f | RMSE = %.3f\n', ...
+        modelsList{i}, R.R2, R.MAE, R.RMSE);
+    if R.R2 > bestR2
+        bestR2 = R.R2; bestName = modelsList{i};
+    end
+end
+fprintf('=> Best (by R^2): %s\n', bestName);
+
+% Plot True vs Pred for best
+bestYp = results.(bestName).yp;
+figure; scatter(Ytest, bestYp, 30, 'filled'); grid on; hold on;
+plot([min(Ytest) max(Ytest)],[min(Ytest) max(Ytest)],'k--','LineWidth',1.5);
+xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
+title(sprintf('Part 6 — %s: Test True vs Pred', bestName));
+
+% ---------- 6.5 Save best model & normalization for deployment ----------
+BestModelPackage = struct('name', bestName, 'muX', muX, 'stdX', stdX, ...
+    'Xnames', {Xnames}, 'target', Yname);
+switch bestName
+    case 'Ridge'
+        BestModelPackage.model = ridgeTrained;
+    case 'Lasso'
+        BestModelPackage.model = lassoTrained;
+    case 'PLS'
+        BestModelPackage.model = struct('beta', beta, 'intercept', beta(1), ...
+            'pctvarX', PCTVAR(1,:), 'pctvarY', PCTVAR(2,:));
+    case 'Tree'
+        BestModelPackage.model = treeMdl;
+    case 'Ensemble'
+        BestModelPackage.model = ensMdl;
+end
+save('part6_best_model.mat','BestModelPackage');
+
+% ---------- 6.6 Helper functions ----------
+function out = getFieldSafe(S, name, idx, altName)
+    if isfield(S, name)
+        v = S.(name);
+    elseif nargin >= 4 && isfield(S, altName)
+        v = S.(altName);
+    else
+        v = nan(numel(idx),1);
+    end
+    if iscell(v), v = cell2mat(v); end
+    out = v(idx);
+end
+
+function R = evalReg(ytrue, ypred, tag)
+    ytrue = ytrue(:); ypred = ypred(:);
+    resid = ytrue - ypred;
+    SSres = sum(resid.^2);
+    SStot = sum( (ytrue - mean(ytrue)).^2 );
+    R.R2   = 1 - SSres/SStot;
+    R.MAE  = mean(abs(resid));
+    R.RMSE = sqrt(mean(resid.^2));
+    R.yp   = ypred;
+    R.tag  = tag;
+end
+
+
+
+%% --- Part 7: Deep Learning (Tiny 1D CNN, PPG + Area  Early Fusion) ---
+% Goal: learn from raw/minimally processed beats using a small two-branch CNN.
+% Inputs: PPG_Radial and A_Radial (already truncated to equal T), target = PWV_cf.
+
+rng(7);  % reproducibility
+
+% ---------- 7.1 Prepare sequences ----------
+X_ppg = waves.PPG_Radial;   % [N x T]
+X_area = waves.A_Radial;    % [N x T]
+y = PWV_cf(:);
+
+% Filter out rows with NaNs/Infs or missing targets
+good = all(isfinite(X_ppg),2) & all(isfinite(X_area),2) & isfinite(y);
+X_ppg = X_ppg(good,:); 
+X_area = X_area(good,:);
+y = y(good);
+
+N = size(X_ppg,1);
+T = size(X_ppg,2);
+
+% Per-subject normalization (zero-mean, unit-std); robust to amplitude variation
+norm1 = @(x) (x - mean(x)) ./ max(std(x), eps);
+X_ppg = (X_ppg - mean(X_ppg,2)) ./ max(std(X_ppg,[],2), eps);
+X_area = (X_area - mean(X_area,2)) ./ max(std(X_area,[],2), eps);
+
+% Convert to cell arrays of sequences with shape [features x time] = [1 x T]
+seqPPG  = cell(N,1); 
+seqAREA = cell(N,1);
+for i = 1:N
+    seqPPG{i}  = reshape(X_ppg(i,:),  [1 T]);
+    seqAREA{i} = reshape(X_area(i,:), [1 T]);
+end
+
+% ---------- 7.2 Train/Validation/Test split (70/15/15) ----------
+idx = randperm(N);
+nTrain = round(0.70*N);
+nVal   = round(0.15*N);
+trainIdx = idx(1:nTrain);
+valIdx   = idx(nTrain+1:nTrain+nVal);
+testIdx  = idx(nTrain+nVal+1:end);
+
+tblTrain = table(seqPPG(trainIdx), seqAREA(trainIdx), y(trainIdx), ...
+    'VariableNames', {'ppg','area','PWV'});
+tblVal   = table(seqPPG(valIdx),   seqAREA(valIdx),   y(valIdx), ...
+    'VariableNames', {'ppg','area','PWV'});
+tblTest  = table(seqPPG(testIdx),  seqAREA(testIdx),  y(testIdx), ...
+    'VariableNames', {'ppg','area','PWV'});
+
+% ---------- 7.3 Define tiny two-branch 1D CNN with early fusion ----------
+ppgBranch = [
+    sequenceInputLayer(1, "Name","ppg_in")
+    convolution1dLayer(5,16,"Padding","same","Name","ppg_conv1")
+    batchNormalizationLayer("Name","ppg_bn1")
+    reluLayer("Name","ppg_relu1")
+    maxPooling1dLayer(2,"Name","ppg_pool1")
+    convolution1dLayer(5,32,"Padding","same","Name","ppg_conv2")
+    batchNormalizationLayer("Name","ppg_bn2")
+    reluLayer("Name","ppg_relu2")
+    globalAveragePooling1dLayer("Name","ppg_gap")
+];
+
+areaBranch = [
+    sequenceInputLayer(1, "Name","area_in")
+    convolution1dLayer(5,16,"Padding","same","Name","area_conv1")
+    batchNormalizationLayer("Name","area_bn1")
+    reluLayer("Name","area_relu1")
+    maxPooling1dLayer(2,"Name","area_pool1")
+    convolution1dLayer(5,32,"Padding","same","Name","area_conv2")
+    batchNormalizationLayer("Name","area_bn2")
+    reluLayer("Name","area_relu2")
+    globalAveragePooling1dLayer("Name","area_gap")
+];
+
+fusionHead = [
+    concatenationLayer(1,2,"Name","concat")      % concat GAP outputs: 32+32
+    fullyConnectedLayer(32,"Name","fc1")
+    reluLayer("Name","relu_fc1")
+    dropoutLayer(0.1,"Name","drop1")
+    fullyConnectedLayer(16,"Name","fc2")
+    reluLayer("Name","relu_fc2")
+    fullyConnectedLayer(1,"Name","fc_out")
+    regressionLayer("Name","reg_out")
+];
+
+lgraph = layerGraph();
+lgraph = addLayers(lgraph, ppgBranch);
+lgraph = addLayers(lgraph, areaBranch);
+lgraph = addLayers(lgraph, fusionHead);
+
+% Connect branches to fusion concat
+lgraph = connectLayers(lgraph, "ppg_gap",  "concat/in1");
+lgraph = connectLayers(lgraph, "area_gap", "concat/in2");
+
+% ---------- 7.4 Training options ----------
+miniBatchSize = 64;
+maxEpochs     = 40;
+learnRate     = 1e-3;
+
+opts = trainingOptions("adam", ...
+    "InitialLearnRate", learnRate, ...
+    "MaxEpochs", maxEpochs, ...
+    "MiniBatchSize", miniBatchSize, ...
+    "Shuffle","every-epoch", ...
+    "ValidationData", tblVal, ...
+    "ValidationFrequency", 20, ...
+    "Plots","training-progress", ...
+    "Verbose", false);
+
+% ---------- 7.5 Train ----------
+% trainNetwork supports multi-input tables: columns must match input layer names
+% Map table variable names to layer names via 'InputNames' in trainNetwork (R2021b+),
+% or rename table vars to exact layer names:
+tblTrain.Properties.VariableNames = {'ppg_in','area_in','PWV'};
+tblVal.Properties.VariableNames   = {'ppg_in','area_in','PWV'};
+tblTest.Properties.VariableNames  = {'ppg_in','area_in','PWV'};
+
+net = trainNetwork(tblTrain, lgraph, opts);
+
+% ---------- 7.6 Evaluate on test set ----------
+% Predictions
+yp = predict(net, tblTest, 'MiniBatchSize', miniBatchSize);
+ytrue = tblTest.PWV;
+
+% Metrics
+resid = ytrue - yp;
+SSres = sum(resid.^2);
+SStot = sum( (ytrue - mean(ytrue)).^2 );
+R2    = 1 - SSres/SStot;
+MAE   = mean(abs(resid));
+RMSE  = sqrt(mean(resid.^2));
+
+fprintf('\n=== Part 7 (Tiny CNN, PPG+Area) — Test Metrics ===\n');
+fprintf('R^2 = %.3f | MAE = %.3f m/s | RMSE = %.3f m/s\n', R2, MAE, RMSE);
+
+% Scatter plot
+figure;
+scatter(ytrue, yp, 30, 'filled'); grid on; hold on;
+plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.5);
+xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
+title('Part 7 — Tiny CNN (PPG + Area): Test True vs Pred');
+
+% ---------- 7.7 Save model for later fine-tuning on real data ----------
+DLModelPackage = struct();
+DLModelPackage.net = net;
+DLModelPackage.info = struct('T', T, 'fs', fs, ...
+    'normalization', 'per-subject zscore (mean=0, std=1)', ...
+    'branches', {'PPG_Radial','A_Radial'}, ...
+    'train_split', [nTrain nVal numel(testIdx)], ...
+    'miniBatchSize', miniBatchSize, 'maxEpochs', maxEpochs, ...
+    'metrics', struct('R2',R2,'MAE',MAE,'RMSE',RMSE));
+save('part7_tinycnn_ppg_area.mat', 'DLModelPackage');
