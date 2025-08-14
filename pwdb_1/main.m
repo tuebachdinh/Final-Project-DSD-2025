@@ -421,6 +421,58 @@ if ~isGood
     warning('This pulse may be of low quality or corrupted!');
 end
 
+%% Part 5.5: Using New PulseAnalyse on Same Radial PPG Data
+
+% Use the same signal from Part 5.1
+S_new = struct();
+S_new.v = signal(:);  % Same signal as Part 5.1
+S_new.fs = fs;
+% S_new.ht = 1.75;    % Optional: subject height in meters
+
+% Configure options for new PulseAnalyse
+options_new = struct();
+options_new.do_plot = true;
+options_new.do_filter = 1;
+options_new.do_quality = 1;
+options_new.normalise_pw = 1;
+options_new.beat_detector = 'IMS';
+
+% Run the new pulse analysis function
+[pw_inds_new, fid_pts_new, pulses_new, sigs_new] = PulseAnalyse(S_new, options_new);
+
+% Display key results
+fprintf('\n=== New PulseAnalyse Results ===\n');
+if ~isempty(pw_inds_new)
+    fprintf('Augmentation Index (AI): %.2f%%\n', pw_inds_new.AI.v);
+    fprintf('Reflection Index (RI): %.2f\n', pw_inds_new.RI.v);
+    fprintf('Stiffness Index (SI): %.2f m/s\n', pw_inds_new.SI.v);
+    fprintf('Crest Time (CT): %.3f s\n', pw_inds_new.CT.v);
+    fprintf('Delta T: %.3f s\n', pw_inds_new.delta_t.v);
+end
+
+% Compare fiducial points between old and new versions
+figure('Position', [100 100 1200 400]);
+subplot(1,2,1);
+plot(S.v, 'b', 'LineWidth', 1.5); hold on;
+if exist('fid_pts', 'var') && isfield(fid_pts, 'dic')
+    plot(fid_pts.dic, S.v(fid_pts.dic), 'ro', 'MarkerSize', 8);
+end
+title('PulseAnalyse10 (Old Version)');
+xlabel('Sample'); ylabel('Amplitude');
+legend('PPG Signal', 'Dicrotic Notch');
+
+subplot(1,2,2);
+plot(S_new.v, 'b', 'LineWidth', 1.5); hold on;
+if ~isempty(fid_pts_new) && ~isnan(fid_pts_new.ind.dic)
+    plot(fid_pts_new.ind.dic, S_new.v(fid_pts_new.ind.dic), 'ro', 'MarkerSize', 8);
+    plot(fid_pts_new.ind.s, S_new.v(fid_pts_new.ind.s), 'go', 'MarkerSize', 8);
+    plot(fid_pts_new.ind.dia, S_new.v(fid_pts_new.ind.dia), 'mo', 'MarkerSize', 8);
+end
+title('PulseAnalyse (New Version)');
+xlabel('Sample'); ylabel('Amplitude');
+legend('PPG Signal', 'Dicrotic Notch', 'Systolic Peak', 'Diastolic Peak');
+sgtitle('Comparison: Old vs New PulseAnalyse');
+
 
 
 
