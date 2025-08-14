@@ -542,24 +542,28 @@ for ii = 1:Nsubj
     xcorr_pp(ii) = c;
 end
 
-% -- Optional Gaussian fit features on PPG (cheap & robust) --
-% Normalize each beat (0-1) before fitting to stabilize amplitudes
-A1 = nan(Nsubj,1); MU1 = nan(Nsubj,1); S1 = nan(Nsubj,1);
-A2 = nan(Nsubj,1); MU2 = nan(Nsubj,1); S2 = nan(Nsubj,1);
+% -- Simple peak detection features on PPG (cheap & robust) --
+% Find primary and secondary peaks using simple methods
 P1samp = nan(Nsubj,1); P2samp = nan(Nsubj,1);
+P1_amp = nan(Nsubj,1); P2_amp = nan(Nsubj,1);
 for ii = 1:Nsubj
     x = PPG_R(ii,:)';
     % min-max normalize
     xx = x; 
     rngv = max(xx)-min(xx);
     if rngv > 0, xx = (xx - min(xx)) / rngv; end
-    try
-        [fitCurve, params, p1_loc, p2_loc, gof] = fitTwoGaussiansPPG(xx, fs);
-        A1(ii)    = params(1); MU1(ii) = params(2)/fs; S1(ii) = params(3)/fs;
-        A2(ii)    = params(4); MU2(ii) = params(5)/fs; S2(ii) = params(6)/fs;
-        P1samp(ii)= p1_loc;    P2samp(ii)= p2_loc;
-    catch
-        % leave NaNs; handled later
+    
+    % Find primary peak (systolic)
+    [P1_amp(ii), P1samp(ii)] = max(xx);
+    
+    % Find secondary peak (dicrotic) in second half
+    mid_idx = round(length(xx)/2);
+    if P1samp(ii) < mid_idx
+        [P2_amp(ii), p2_rel] = max(xx(P1samp(ii)+10:end));
+        P2samp(ii) = P1samp(ii) + 10 + p2_rel - 1;
+    else
+        P2_amp(ii) = 0;
+        P2samp(ii) = length(xx);
     end
 end
 % Convert P1/P2 sample indices to sec (relative to beat start)
@@ -575,7 +579,7 @@ Xtbl = table( ...
     Amax(:), Amin(:), Amean(:), Astk(:), Aosc(:), ...
     PTT_aor_to_rad(:), ...
     t_ppg_pk(:), t_A_pk(:), lag_A_vs_PPG(:), xcorr_pp(:), ...
-    A1, MU1, S1, A2, MU2, S2, tP1, tP2, dTPeaks, ...
+    P1_amp, P2_amp, tP1, tP2, dTPeaks, ...
     y, ...
     'VariableNames', { ...
     'Age','HR','LVET','PFT', ...
@@ -585,7 +589,7 @@ Xtbl = table( ...
     'Amax','Amin','Amean','Astk','Aosc', ...
     'PTT_hw', ...
     'tPPGpk','tApk','lagAminusPPG','xcorrSyst', ...
-    'G_A1','G_MU1','G_S1','G_A2','G_MU2','G_S2','tP1','tP2','dTPeaks', ...
+    'P1_amp','P2_amp','tP1','tP2','dTPeaks', ...
     'PWV_cf'});
 
 % Clean NaNs/Infs
@@ -620,15 +624,10 @@ ridgeTrained = fitrlinear(Ztrain, Ytrain, ...
 yp_ridge = predict(ridgeTrained, Ztest);
 results.Ridge = evalReg(Ytest, yp_ridge, 'Ridge');
 
-% (b) Lasso (lambda via internal CV)
-lassoMdl = fitrlinear(Ztrain, Ytrain, ...
-    'Learner','leastsquares','Regularization','lasso', ...
-    'KFold',5, 'Solver','sparsa');
-% refit with best lambda (mean)
-bestLambda = mean(cell2mat(lassoMdl.ModelParameters.Lambda));
+% (b) Lasso (with fixed lambda)
 lassoTrained = fitrlinear(Ztrain, Ytrain, ...
     'Learner','leastsquares','Regularization','lasso', ...
-    'Lambda', bestLambda, 'Solver','sparsa');
+    'Lambda', 0.01, 'Solver','sparsa');
 yp_lasso = predict(lassoTrained, Ztest);
 results.Lasso = evalReg(Ytest, yp_lasso, 'Lasso');
 
