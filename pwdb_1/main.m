@@ -355,7 +355,7 @@ end
 addpath('/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/algorithms/');
 
 % --- Choose a subject and extract their PPG waveform ---
-subject_idx = 1; % Or any plausible subject index
+subject_idx = 6; % Or any plausible subject index
 signal = waves.PPG_Radial(subject_idx, :);
 
 % --- Prepare the structure for analysis ---
@@ -456,21 +456,25 @@ subplot(1,2,1);
 plot(S.v, 'b', 'LineWidth', 1.5); hold on;
 if exist('fid_pts', 'var') && isfield(fid_pts, 'dic')
     plot(fid_pts.dic, S.v(fid_pts.dic), 'ro', 'MarkerSize', 8);
+    plot(fid_pts.p2pk, S.v(fid_pts.p2pk), 'go', 'MarkerSize', 8);
+    plot(fid_pts.dia, S_new.v(fid_pts.dia), 'mo', 'MarkerSize', 8);
+
 end
 title('PulseAnalyse10 (Old Version)');
 xlabel('Sample'); ylabel('Amplitude');
-legend('PPG Signal', 'Dicrotic Notch');
+legend('PPG Signal', 'Dicrotic Notch', 'Second Peak', 'Diastolic Peak');
+
 
 subplot(1,2,2);
 plot(S_new.v, 'b', 'LineWidth', 1.5); hold on;
 if ~isempty(fid_pts_new) && ~isnan(fid_pts_new.ind.dic)
     plot(fid_pts_new.ind.dic, S_new.v(fid_pts_new.ind.dic), 'ro', 'MarkerSize', 8);
-    plot(fid_pts_new.ind.s, S_new.v(fid_pts_new.ind.s), 'go', 'MarkerSize', 8);
+    plot(fid_pts_new.ind.p2pk, S_new.v(fid_pts_new.ind.p2pk), 'go', 'MarkerSize', 8);
     plot(fid_pts_new.ind.dia, S_new.v(fid_pts_new.ind.dia), 'mo', 'MarkerSize', 8);
 end
 title('PulseAnalyse (New Version)');
 xlabel('Sample'); ylabel('Amplitude');
-legend('PPG Signal', 'Dicrotic Notch', 'Systolic Peak', 'Diastolic Peak');
+legend('PPG Signal', 'Dicrotic Notch', 'Second Peak', 'Diastolic Peak');
 sgtitle('Comparison: Old vs New PulseAnalyse');
 
 
@@ -638,14 +642,15 @@ yp_pls = [ones(size(Ztest,1),1) Ztest]*beta;
 results.PLS = evalReg(Ytest, yp_pls, sprintf('PLS (%d comps)', size(beta,1)-1));
 
 % (d) Small Tree
-treeMdl = fitrtree(Ztrain, Ytrain, 'MinLeafSize', 50, 'MaxNumSplits', 40);
+treeMdl = fitrtree(Ztrain, Ytrain, 'MinLeafSize', 100, 'MaxNumSplits', 10);
 yp_tree = predict(treeMdl, Ztest);
 results.Tree = evalReg(Ytest, yp_tree, 'Tree (small)');
 
 % (e) Shallow Ensemble (LSBoost) — keep tiny to avoid overfit
+treeTemplate = templateTree('MinLeafSize', 80, 'MaxNumSplits', 20);
 ensMdl = fitrensemble(Ztrain, Ytrain, 'Method','LSBoost', ...
     'NumLearningCycles', 60, 'LearnRate', 0.05, ...
-    'MinLeafSize', 80, 'MaxNumSplits', 20);
+    'Learners', treeTemplate);
 yp_ens = predict(ensMdl, Ztest);
 results.Ensemble = evalReg(Ytest, yp_ens, 'Ensemble (shallow)');
 
@@ -689,18 +694,6 @@ end
 save('part6_best_model.mat','BestModelPackage');
 
 % ---------- 6.6 Helper functions ----------
-function out = getFieldSafe(S, name, idx, altName)
-    if isfield(S, name)
-        v = S.(name);
-    elseif nargin >= 4 && isfield(S, altName)
-        v = S.(altName);
-    else
-        v = nan(numel(idx),1);
-    end
-    if iscell(v), v = cell2mat(v); end
-    out = v(idx);
-end
-
 function R = evalReg(ytrue, ypred, tag)
     ytrue = ytrue(:); ypred = ypred(:);
     resid = ytrue - ypred;
@@ -715,13 +708,14 @@ end
 
 
 
-%% --- Part 7: Deep Learning (Tiny 1D CNN, PPG + Area  Early Fusion) ---
-% Goal: learn from raw/minimally processed beats using a small two-branch CNN.
-% Inputs: PPG_Radial and A_Radial (already truncated to equal T), target = PWV_cf.
+
+
+%% --- Part 7: Simple Deep Learning (Single Input CNN) ---
+% Simplified version using concatenated features instead of multi-input
 
 rng(7);  % reproducibility
 
-% ---------- 7.1 Prepare sequences ----------
+% ---------- 7.1 Prepare data ----------
 X_ppg = waves.PPG_Radial;   % [N x T]
 X_area = waves.A_Radial;    % [N x T]
 y = PWV_cf(:);
@@ -735,134 +729,70 @@ y = y(good);
 N = size(X_ppg,1);
 T = size(X_ppg,2);
 
-% Per-subject normalization (zero-mean, unit-std); robust to amplitude variation
-norm1 = @(x) (x - mean(x)) ./ max(std(x), eps);
+% Normalize each signal
 X_ppg = (X_ppg - mean(X_ppg,2)) ./ max(std(X_ppg,[],2), eps);
 X_area = (X_area - mean(X_area,2)) ./ max(std(X_area,[],2), eps);
 
-% Convert to cell arrays of sequences with shape [features x time] = [1 x T]
-seqPPG  = cell(N,1); 
-seqAREA = cell(N,1);
+% Concatenate PPG and Area as 2-channel input
+X_combined = cat(3, X_ppg, X_area);  % [N x T x 2]
+X_combined = permute(X_combined, [3 2 1]);  % [2 x T x N] for MATLAB
+
+% Convert to cell array of sequences
+seqData = cell(N,1);
 for i = 1:N
-    seqPPG{i}  = reshape(X_ppg(i,:),  [1 T]);
-    seqAREA{i} = reshape(X_area(i,:), [1 T]);
+    seqData{i} = X_combined(:,:,i);  % [2 x T]
 end
 
-% ---------- 7.2 Train/Validation/Test split (70/15/15) ----------
+% ---------- 7.2 Train/Test split ----------
 idx = randperm(N);
-nTrain = round(0.70*N);
-nVal   = round(0.15*N);
+nTrain = round(0.8*N);
 trainIdx = idx(1:nTrain);
-valIdx   = idx(nTrain+1:nTrain+nVal);
-testIdx  = idx(nTrain+nVal+1:end);
+testIdx = idx(nTrain+1:end);
 
-tblTrain = table(seqPPG(trainIdx), seqAREA(trainIdx), y(trainIdx), ...
-    'VariableNames', {'ppg','area','PWV'});
-tblVal   = table(seqPPG(valIdx),   seqAREA(valIdx),   y(valIdx), ...
-    'VariableNames', {'ppg','area','PWV'});
-tblTest  = table(seqPPG(testIdx),  seqAREA(testIdx),  y(testIdx), ...
-    'VariableNames', {'ppg','area','PWV'});
-
-% ---------- 7.3 Define tiny two-branch 1D CNN with early fusion ----------
-ppgBranch = [
-    sequenceInputLayer(1, "Name","ppg_in")
-    convolution1dLayer(5,16,"Padding","same","Name","ppg_conv1")
-    batchNormalizationLayer("Name","ppg_bn1")
-    reluLayer("Name","ppg_relu1")
-    maxPooling1dLayer(2,"Name","ppg_pool1")
-    convolution1dLayer(5,32,"Padding","same","Name","ppg_conv2")
-    batchNormalizationLayer("Name","ppg_bn2")
-    reluLayer("Name","ppg_relu2")
-    globalAveragePooling1dLayer("Name","ppg_gap")
+% ---------- 7.3 Simple 1D CNN ----------
+layers = [
+    sequenceInputLayer(2, 'MinLength', T, 'Name', 'input')
+    convolution1dLayer(10, 64, 'Padding', 'same')
+    reluLayer
+    convolution1dLayer(10, 128, 'Padding', 'same')
+    reluLayer
+    globalAveragePooling1dLayer
+    fullyConnectedLayer(64)
+    reluLayer
+    fullyConnectedLayer(1)
+    regressionLayer
 ];
-
-areaBranch = [
-    sequenceInputLayer(1, "Name","area_in")
-    convolution1dLayer(5,16,"Padding","same","Name","area_conv1")
-    batchNormalizationLayer("Name","area_bn1")
-    reluLayer("Name","area_relu1")
-    maxPooling1dLayer(2,"Name","area_pool1")
-    convolution1dLayer(5,32,"Padding","same","Name","area_conv2")
-    batchNormalizationLayer("Name","area_bn2")
-    reluLayer("Name","area_relu2")
-    globalAveragePooling1dLayer("Name","area_gap")
-];
-
-fusionHead = [
-    concatenationLayer(1,2,"Name","concat")      % concat GAP outputs: 32+32
-    fullyConnectedLayer(32,"Name","fc1")
-    reluLayer("Name","relu_fc1")
-    dropoutLayer(0.1,"Name","drop1")
-    fullyConnectedLayer(16,"Name","fc2")
-    reluLayer("Name","relu_fc2")
-    fullyConnectedLayer(1,"Name","fc_out")
-    regressionLayer("Name","reg_out")
-];
-
-lgraph = layerGraph();
-lgraph = addLayers(lgraph, ppgBranch);
-lgraph = addLayers(lgraph, areaBranch);
-lgraph = addLayers(lgraph, fusionHead);
-
-% Connect branches to fusion concat
-lgraph = connectLayers(lgraph, "ppg_gap",  "concat/in1");
-lgraph = connectLayers(lgraph, "area_gap", "concat/in2");
 
 % ---------- 7.4 Training options ----------
-miniBatchSize = 64;
-maxEpochs     = 40;
-learnRate     = 1e-3;
-
-opts = trainingOptions("adam", ...
-    "InitialLearnRate", learnRate, ...
-    "MaxEpochs", maxEpochs, ...
-    "MiniBatchSize", miniBatchSize, ...
-    "Shuffle","every-epoch", ...
-    "ValidationData", tblVal, ...
-    "ValidationFrequency", 20, ...
-    "Plots","training-progress", ...
-    "Verbose", false);
+opts = trainingOptions('adam', ...
+    'InitialLearnRate', 1e-3, ...
+    'MaxEpochs', 40, ...
+    'MiniBatchSize', 32, ...
+    'Shuffle', 'every-epoch', ...
+    'Verbose', false);
 
 % ---------- 7.5 Train ----------
-% trainNetwork supports multi-input tables: columns must match input layer names
-% Map table variable names to layer names via 'InputNames' in trainNetwork (R2021b+),
-% or rename table vars to exact layer names:
-tblTrain.Properties.VariableNames = {'ppg_in','area_in','PWV'};
-tblVal.Properties.VariableNames   = {'ppg_in','area_in','PWV'};
-tblTest.Properties.VariableNames  = {'ppg_in','area_in','PWV'};
+net = trainNetwork(seqData(trainIdx), y(trainIdx), layers, opts);
 
-net = trainNetwork(tblTrain, lgraph, opts);
-
-% ---------- 7.6 Evaluate on test set ----------
-% Predictions
-yp = predict(net, tblTest, 'MiniBatchSize', miniBatchSize);
-ytrue = tblTest.PWV;
+% ---------- 7.6 Evaluate ----------
+yp = predict(net, seqData(testIdx));
+ytrue = y(testIdx);
 
 % Metrics
 resid = ytrue - yp;
-SSres = sum(resid.^2);
-SStot = sum( (ytrue - mean(ytrue)).^2 );
-R2    = 1 - SSres/SStot;
-MAE   = mean(abs(resid));
-RMSE  = sqrt(mean(resid.^2));
+R2 = 1 - sum(resid.^2) / sum((ytrue - mean(ytrue)).^2);
+MAE = mean(abs(resid));
+RMSE = sqrt(mean(resid.^2));
 
-fprintf('\n=== Part 7 (Tiny CNN, PPG+Area) — Test Metrics ===\n');
+fprintf('\n=== Part 7 (Simple CNN) — Test Metrics ===\n');
 fprintf('R^2 = %.3f | MAE = %.3f m/s | RMSE = %.3f m/s\n', R2, MAE, RMSE);
 
-% Scatter plot
+% Plot
 figure;
 scatter(ytrue, yp, 30, 'filled'); grid on; hold on;
 plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.5);
 xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
-title('Part 7 — Tiny CNN (PPG + Area): Test True vs Pred');
+title('Part 7 — Simple CNN: Test True vs Pred');
 
-% ---------- 7.7 Save model for later fine-tuning on real data ----------
-DLModelPackage = struct();
-DLModelPackage.net = net;
-DLModelPackage.info = struct('T', T, 'fs', fs, ...
-    'normalization', 'per-subject zscore (mean=0, std=1)', ...
-    'branches', {'PPG_Radial','A_Radial'}, ...
-    'train_split', [nTrain nVal numel(testIdx)], ...
-    'miniBatchSize', miniBatchSize, 'maxEpochs', maxEpochs, ...
-    'metrics', struct('R2',R2,'MAE',MAE,'RMSE',RMSE));
-save('part7_tinycnn_ppg_area.mat', 'DLModelPackage');
+% Save model
+save('part7_simple_cnn.mat', 'net');
