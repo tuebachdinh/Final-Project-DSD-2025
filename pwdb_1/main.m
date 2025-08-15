@@ -355,7 +355,7 @@ end
 addpath('/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/algorithms/');
 
 % --- Choose a subject and extract their PPG waveform ---
-subject_idx = 6; % Or any plausible subject index
+subject_idx = 1; % Or any plausible subject index
 signal = waves.PPG_Radial(subject_idx, :);
 
 % --- Prepare the structure for analysis ---
@@ -635,11 +635,25 @@ lassoTrained = fitrlinear(Ztrain, Ytrain, ...
 yp_lasso = predict(lassoTrained, Ztest);
 results.Lasso = evalReg(Ytest, yp_lasso, 'Lasso');
 
-% (c) Partial Least Squares (PLS) with small latent dims
-maxComps = min(10, size(Ztrain,2));
-[Rpls,~,~,~,beta, PCTVAR] = plsregress(Ztrain, Ytrain, min(6,maxComps));
-yp_pls = [ones(size(Ztest,1),1) Ztest]*beta;
-results.PLS = evalReg(Ytest, yp_pls, sprintf('PLS (%d comps)', size(beta,1)-1));
+% (c) Partial Least Squares (PLS) 
+% --- Cross-validation to pick optimal # of components for PLS ---
+varZtrain = var(Ztrain, 0, 1);
+constCols = varZtrain == 0 | isnan(varZtrain);
+Ztrain_pls = Ztrain(:, ~constCols);
+Ztest_pls  = Ztest(:,  ~constCols);
+maxComps = min([10, size(Ztrain_pls,2), rank(Ztrain_pls)]);
+% 10-fold CV to find the number of components with lowest RMSECV
+cvRMSE = nan(maxComps,1);
+for ncomp = 1:maxComps
+    [~,~,~,~,~,~,MSE] = plsregress(Ztrain_pls, Ytrain, ncomp, 'CV', 10);
+    cvRMSE(ncomp) = sqrt(MSE(2,ncomp+1)); % MSE(2,:) is for response Y
+end
+[~,optComps] = min(cvRMSE);
+fprintf('Optimal # of PLS components = %d (CV)\n', optComps);
+[XL,yl,XS,YS,beta,PCTVAR] = plsregress(Ztrain_pls, Ytrain, optComps);
+yp_pls = [ones(size(Ztest_pls,1),1) Ztest_pls] * beta;
+results.PLS = evalReg(Ytest, yp_pls, sprintf('PLS (%d comps, CV)', optComps));
+
 
 % (d) Small Tree
 treeMdl = fitrtree(Ztrain, Ytrain, 'MinLeafSize', 100, 'MaxNumSplits', 10);
@@ -778,7 +792,7 @@ net = trainNetwork(seqData(trainIdx), y(trainIdx), layers, opts);
 yp = predict(net, seqData(testIdx));
 ytrue = y(testIdx);
 
-% Metrics
+%% Metrics
 resid = ytrue - yp;
 R2 = 1 - sum(resid.^2) / sum((ytrue - mean(ytrue)).^2);
 MAE = mean(abs(resid));
