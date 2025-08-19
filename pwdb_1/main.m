@@ -724,8 +724,8 @@ end
 
 
 
-%% --- Part 7: Simple Deep Learning (Single Input CNN) ---
-% Simplified version using concatenated features instead of multi-input
+%% --- Part 7: Deep Learning Comparison (CNN vs GRU) ---
+% Compare CNN and GRU for pulse waveform analysis
 
 rng(7);  % reproducibility
 
@@ -763,7 +763,15 @@ nTrain = round(0.8*N);
 trainIdx = idx(1:nTrain);
 testIdx = idx(nTrain+1:end);
 
-% ---------- 7.3 Simple 1D CNN ----------
+% ---------- 7.3 Training options ----------
+opts = trainingOptions('adam', ...
+    'InitialLearnRate', 1e-3, ...
+    'MaxEpochs', 40, ...
+    'MiniBatchSize', 32, ...
+    'Shuffle', 'every-epoch', ...
+    'Verbose', false);
+
+% ---------- 7.4 Simple 1D CNN Model ----------
 layers = [
     sequenceInputLayer(2, 'MinLength', T, 'Name', 'input')
     convolution1dLayer(10, 64, 'Padding', 'same')
@@ -777,36 +785,67 @@ layers = [
     regressionLayer
 ];
 
-% ---------- 7.4 Training options ----------
-opts = trainingOptions('adam', ...
-    'InitialLearnRate', 1e-3, ...
-    'MaxEpochs', 40, ...
-    'MiniBatchSize', 32, ...
-    'Shuffle', 'every-epoch', ...
-    'Verbose', false);
+% Train CNN
+net_cnn = trainNetwork(seqData(trainIdx), y(trainIdx), layers, opts);
 
-% ---------- 7.5 Train ----------
-net = trainNetwork(seqData(trainIdx), y(trainIdx), layers, opts);
-
-% ---------- 7.6 Evaluate ----------
-yp = predict(net, seqData(testIdx));
+% Evaluate CNN 
+yp_cnn = predict(net_cnn, seqData(testIdx));
 ytrue = y(testIdx);
 
-%% Metrics
-resid = ytrue - yp;
-R2 = 1 - sum(resid.^2) / sum((ytrue - mean(ytrue)).^2);
-MAE = mean(abs(resid));
-RMSE = sqrt(mean(resid.^2));
+% CNN Metrics
+resid_cnn = ytrue - yp_cnn;
+R2_cnn = 1 - sum(resid_cnn.^2) / sum((ytrue - mean(ytrue)).^2);
+MAE_cnn = mean(abs(resid_cnn));
+RMSE_cnn = sqrt(mean(resid_cnn.^2));
 
-fprintf('\n=== Part 7 (Simple CNN) — Test Metrics ===\n');
-fprintf('R^2 = %.3f | MAE = %.3f m/s | RMSE = %.3f m/s\n', R2, MAE, RMSE);
 
-% Plot
+% ---------- 7.5 GRU Model ----------
+layers_gru = [
+    sequenceInputLayer(2, 'Name', 'input')
+    gruLayer(64, 'OutputMode', 'last')
+    fullyConnectedLayer(32)
+    reluLayer
+    fullyConnectedLayer(1)
+    regressionLayer
+];
+
+% Train GRU
+net_gru = trainNetwork(seqData(trainIdx), y(trainIdx), layers_gru, opts);
+
+% Evaluate GRU
+yp_gru = predict(net_gru, seqData(testIdx));
+resid_gru = ytrue - yp_gru;
+R2_gru = 1 - sum(resid_gru.^2) / sum((ytrue - mean(ytrue)).^2);
+MAE_gru = mean(abs(resid_gru));
+RMSE_gru = sqrt(mean(resid_gru.^2));
+
+% ---------- 7.6 Compare Results ----------
+fprintf('\n=== Part 7 Deep Learning Results ===\n');
+fprintf('CNN:  R^2 = %.3f | MAE = %.3f | RMSE = %.3f\n', R2_cnn, MAE_cnn, RMSE_cnn);
+fprintf('GRU:  R^2 = %.3f | MAE = %.3f | RMSE = %.3f\n', R2_gru, MAE_gru, RMSE_gru);
+
+% Determine best model
+if R2_gru > R2_cnn
+    fprintf('=> Best: GRU\n');
+    best_model = 'GRU'; best_yp = yp_gru; best_net = net_gru;
+else
+    fprintf('=> Best: CNN\n');
+    best_model = 'CNN'; best_yp = yp_cnn; best_net = net_cnn;
+end
+
+% Plot comparison
 figure;
-scatter(ytrue, yp, 30, 'filled'); grid on; hold on;
+subplot(1,2,1);
+scatter(ytrue, yp_cnn, 30, 'filled'); grid on; hold on;
 plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.5);
 xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
-title('Part 7 — Simple CNN: Test True vs Pred');
+title(sprintf('CNN: R^2 = %.3f', R2_cnn));
 
-% Save model
-save('part7_simple_cnn.mat', 'net');
+subplot(1,2,2);
+scatter(ytrue, yp_gru, 30, 'filled'); grid on; hold on;
+plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.5);
+xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
+title(sprintf('GRU: R^2 = %.3f', R2_gru));
+
+% Save models
+save('part7_cnn_gru_models.mat', 'net_cnn', 'net_gru', 'best_model', 'best_net');
