@@ -180,7 +180,7 @@ for i = 1:length(wave_types)
     legend('Location','best');
     hold off;
 end
-%sgtitle(sprintf('Waveforms at %s by Age Group', site))
+sgtitle(sprintf('Waveforms at %s by Age Group', site))
 
 
 %% --- Part 2.3: Insights about time delay ---
