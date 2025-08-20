@@ -600,22 +600,129 @@ Xtbl = table( ...
 bad = any(~isfinite(Xtbl{:,:}), 2);
 Xtbl = Xtbl(~bad, :);
 
-% ---------- 6.2 Train/test split ----------
-N = height(Xtbl);
+%% --- Part 6: Data Augmentation for Real-World Simulation ---
+% Simulate realistic noise and artifacts for wrist-based devices
+
+rng(6); % Reproducibility
+
+% ---------- 6.1 Original Clean Data ----------
+X_ppg_clean = waves.PPG_Radial;   % [N x T]
+X_area_clean = waves.A_Radial;    % [N x T]
+y_clean = PWV_cf(:);
+
+% Filter good data
+good_aug = all(isfinite(X_ppg_clean),2) & all(isfinite(X_area_clean),2) & isfinite(y_clean);
+X_ppg_clean = X_ppg_clean(good_aug,:); 
+X_area_clean = X_area_clean(good_aug,:);
+y_clean = y_clean(good_aug);
+
+[N_aug, T_aug] = size(X_ppg_clean);
+fprintf('Clean data: %d subjects, %d time points\n', N_aug, T_aug);
+
+% ---------- 6.2 Apply Realistic Augmentations ----------
+fprintf('\n=== Applying Real-World Augmentations ===\n');
+
+% PPG Augmentations (smartphone/wearable specific)
+X_ppg_aug = X_ppg_clean;
+% Add Gaussian noise (25 dB SNR)
+sig_power = mean(X_ppg_aug.^2, 2);
+noise_power = sig_power ./ (10.^(25/10));
+noise = sqrt(noise_power) .* randn(size(X_ppg_aug));
+X_ppg_aug = X_ppg_aug + noise;
+
+% Add baseline drift (5%)
+t_drift = linspace(0, 1, T_aug);
+for i = 1:N_aug
+    drift_freq = 0.1 + 0.3*rand();
+    drift = 0.05 * sin(2*pi*drift_freq*t_drift + 2*pi*rand());
+    X_ppg_aug(i,:) = X_ppg_aug(i,:) + drift;
+end
+
+% Add motion artifacts (30% probability)
+for i = 1:N_aug
+    if rand() < 0.3
+        spike_start = randi([1, T_aug-20]);
+        spike_dur = randi([5, 15]);
+        spike_end = min(spike_start + spike_dur, T_aug);
+        spike_t = 1:spike_dur;
+        spike = 0.2 * exp(-spike_t/3) .* (2*rand()-1);
+        X_ppg_aug(i, spike_start:spike_end-1) = X_ppg_aug(i, spike_start:spike_end-1) + spike(1:length(spike_start:spike_end-1));
+    end
+end
+
+% Area Augmentations (mmWave radar specific)
+X_area_aug = X_area_clean;
+% Add Gaussian noise (20 dB SNR)
+sig_power = mean(X_area_aug.^2, 2);
+noise_power = sig_power ./ (10.^(20/10));
+noise = sqrt(noise_power) .* randn(size(X_area_aug));
+X_area_aug = X_area_aug + noise;
+
+% Add baseline drift (8%)
+for i = 1:N_aug
+    drift_freq = 0.1 + 0.3*rand();
+    drift = 0.08 * sin(2*pi*drift_freq*t_drift + 2*pi*rand());
+    X_area_aug(i,:) = X_area_aug(i,:) + drift;
+end
+
+% Add motion artifacts (40% probability)
+for i = 1:N_aug
+    if rand() < 0.4
+        spike_start = randi([1, T_aug-20]);
+        spike_dur = randi([5, 15]);
+        spike_end = min(spike_start + spike_dur, T_aug);
+        spike_t = 1:spike_dur;
+        spike = 0.3 * exp(-spike_t/3) .* (2*rand()-1);
+        X_area_aug(i, spike_start:spike_end-1) = X_area_aug(i, spike_start:spike_end-1) + spike(1:length(spike_start:spike_end-1));
+    end
+end
+
+y_aug = y_clean;
+fprintf('Augmented data: %d subjects, %d time points\n', size(X_ppg_aug));
+
+% ---------- 6.3 Use Augmented Dataset Only ----------
+waves_augmented = struct();
+waves_augmented.PPG_Radial = X_ppg_aug;
+waves_augmented.A_Radial = X_area_aug;
+PWV_cf_augmented = y_aug;
+
+fprintf('Using augmented-only dataset: %d subjects\n', length(y_aug));
+
+
+
+%% --- Part 7: Classical ML with Augmented Data ---
+
+% ---------- 7.1 Update features with augmented data ----------
+% Use only augmented features (add noise to all features)
+Xtbl_aug = Xtbl; % Start with clean features
+Xtbl_aug{:, 'PWV_cf'} = PWV_cf_augmented; % Use augmented labels
+
+% Add realistic feature noise to all features (except PWV_cf)
+for i = 1:height(Xtbl_aug)
+    for j = 1:(width(Xtbl_aug)-1)
+        if isnumeric(Xtbl_aug{i,j})
+            noise_level = 0.05 * abs(Xtbl_aug{i,j}); % 5% noise
+            Xtbl_aug{i,j} = Xtbl_aug{i,j} + noise_level * randn();
+        end
+    end
+end
+
+% ---------- 7.2 Train/test split ----------
+N = height(Xtbl_aug);
 cv = cvpartition(N, 'HoldOut', 0.2);
-Xnames = Xtbl.Properties.VariableNames;
+Xnames = Xtbl_aug.Properties.VariableNames;
 Xnames(end) = [];                     % remove PWV_cf from predictors
 Yname = 'PWV_cf';
-Xtrain = Xtbl(training(cv), Xnames);
-Ytrain = Xtbl{training(cv), Yname};
-Xtest  = Xtbl(test(cv), Xnames);
-Ytest  = Xtbl{test(cv),  Yname};
+Xtrain = Xtbl_aug(training(cv), Xnames);
+Ytrain = Xtbl_aug{training(cv), Yname};
+Xtest  = Xtbl_aug(test(cv), Xnames);
+Ytest  = Xtbl_aug{test(cv),  Yname};
 
 % z-score standardize numeric predictors (store params for deployment)
 [Ztrain, muX, stdX] = zscore(table2array(Xtrain));
 Ztest = (table2array(Xtest) - muX) ./ stdX;
 
-% ---------- 6.3 Models (light & deployable) ----------
+% ---------- 7.3 Models (light & deployable) ----------
 results = struct();
 
 % (a) Ridge Regression
@@ -668,8 +775,8 @@ ensMdl = fitrensemble(Ztrain, Ytrain, 'Method','LSBoost', ...
 yp_ens = predict(ensMdl, Ztest);
 results.Ensemble = evalReg(Ytest, yp_ens, 'Ensemble (shallow)');
 
-% ---------- 6.4 Compare and report ----------
-fprintf('\n=== Part 6 Results (Test Set) ===\n');
+% ---------- 7.4 Compare and report ----------
+fprintf('\n=== Part 7 Results (Test Set) ===\n');
 modelsList = fieldnames(results);
 bestName = modelsList{1}; bestR2 = results.(bestName).R2;
 for i = 1:numel(modelsList)
@@ -687,9 +794,9 @@ bestYp = results.(bestName).yp;
 figure; scatter(Ytest, bestYp, 30, 'filled'); grid on; hold on;
 plot([min(Ytest) max(Ytest)],[min(Ytest) max(Ytest)],'k--','LineWidth',1.5);
 xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
-title(sprintf('Part 6 — %s: Test True vs Pred', bestName));
+title(sprintf('Part 7 — %s: Test True vs Pred', bestName));
 
-% ---------- 6.5 Save best model & normalization for deployment ----------
+% ---------- 7.5 Save best model & normalization for deployment ----------
 BestModelPackage = struct('name', bestName, 'muX', muX, 'stdX', stdX, ...
     'Xnames', {Xnames}, 'target', Yname);
 switch bestName
@@ -705,9 +812,9 @@ switch bestName
     case 'Ensemble'
         BestModelPackage.model = ensMdl;
 end
-save('part6_best_model.mat','BestModelPackage');
+save('part7_best_model.mat','BestModelPackage');
 
-% ---------- 6.6 Helper functions ----------
+% ---------- 7.6 Helper functions ----------
 function R = evalReg(ytrue, ypred, tag)
     ytrue = ytrue(:); ypred = ypred(:);
     resid = ytrue - ypred;
@@ -724,15 +831,18 @@ end
 
 
 
-%% --- Part 7: Deep Learning Comparison (CNN vs GRU) ---
-% Compare CNN and GRU for pulse waveform analysis
+%% --- Part 8: Deep Learning Comparison (CNN vs GRU) ---
+% Compare CNN and GRU for pulse waveform analysis with augmented data
 
-rng(7);  % reproducibility
+rng(8);  % reproducibility
 
-% ---------- 7.1 Prepare data ----------
-X_ppg = waves.PPG_Radial;   % [N x T]
-X_area = waves.A_Radial;    % [N x T]
-y = PWV_cf(:);
+% ---------- 8.1 Prepare augmented data ----------
+X_ppg = waves_augmented.PPG_Radial;   % [N x T] - augmented data only
+X_area = waves_augmented.A_Radial;    % [N x T] - augmented data only
+y = PWV_cf_augmented(:);              % Corresponding labels
+
+fprintf('\n=== Part 8: Deep Learning with Augmented Data ===\n');
+fprintf('Training with %d subjects (augmented data only)\n', length(y));
 
 % Filter out rows with NaNs/Infs or missing targets
 good = all(isfinite(X_ppg),2) & all(isfinite(X_area),2) & isfinite(y);
@@ -743,9 +853,9 @@ y = y(good);
 N = size(X_ppg,1);
 T = size(X_ppg,2);
 
-% Normalize each signal
-X_ppg = (X_ppg - mean(X_ppg,2)) ./ max(std(X_ppg,[],2), eps);
+% Normalize each signal (PPG already normalized, Area needs normalization)
 X_area = (X_area - mean(X_area,2)) ./ max(std(X_area,[],2), eps);
+% PPG from augmentation is already in reasonable range
 
 % Concatenate PPG and Area as 2-channel input
 X_combined = cat(3, X_ppg, X_area);  % [N x T x 2]
@@ -757,13 +867,13 @@ for i = 1:N
     seqData{i} = X_combined(:,:,i);  % [2 x T]
 end
 
-% ---------- 7.2 Train/Test split ----------
+% ---------- 8.2 Train/Test split ----------
 idx = randperm(N);
 nTrain = round(0.8*N);
 trainIdx = idx(1:nTrain);
 testIdx = idx(nTrain+1:end);
 
-% ---------- 7.3 Training options ----------
+% ---------- 8.3 Training options ----------
 opts = trainingOptions('adam', ...
     'InitialLearnRate', 1e-3, ...
     'MaxEpochs', 40, ...
@@ -771,7 +881,7 @@ opts = trainingOptions('adam', ...
     'Shuffle', 'every-epoch', ...
     'Verbose', false);
 
-% ---------- 7.4 Simple 1D CNN Model ----------
+% ---------- 8.4 Simple 1D CNN Model ----------
 layers = [
     sequenceInputLayer(2, 'MinLength', T, 'Name', 'input')
     convolution1dLayer(10, 64, 'Padding', 'same')
@@ -799,7 +909,7 @@ MAE_cnn = mean(abs(resid_cnn));
 RMSE_cnn = sqrt(mean(resid_cnn.^2));
 
 
-% ---------- 7.5 GRU Model ----------
+% ---------- 8.5 GRU Model ----------
 layers_gru = [
     sequenceInputLayer(2, 'Name', 'input')
     gruLayer(64, 'OutputMode', 'last')
@@ -819,8 +929,8 @@ R2_gru = 1 - sum(resid_gru.^2) / sum((ytrue - mean(ytrue)).^2);
 MAE_gru = mean(abs(resid_gru));
 RMSE_gru = sqrt(mean(resid_gru.^2));
 
-% ---------- 7.6 Compare Results ----------
-fprintf('\n=== Part 7 Deep Learning Results ===\n');
+% ---------- 8.6 Compare Results ----------
+fprintf('\n=== Part 8 Deep Learning Results ===\n');
 fprintf('CNN:  R^2 = %.3f | MAE = %.3f | RMSE = %.3f\n', R2_cnn, MAE_cnn, RMSE_cnn);
 fprintf('GRU:  R^2 = %.3f | MAE = %.3f | RMSE = %.3f\n', R2_gru, MAE_gru, RMSE_gru);
 
@@ -848,4 +958,4 @@ xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
 title(sprintf('GRU: R^2 = %.3f', R2_gru));
 
 % Save models
-save('part7_cnn_gru_models.mat', 'net_cnn', 'net_gru', 'best_model', 'best_net');
+save('part8_cnn_gru_models.mat', 'net_cnn', 'net_gru', 'best_model', 'best_net');
