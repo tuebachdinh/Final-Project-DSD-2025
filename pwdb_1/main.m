@@ -534,27 +534,31 @@ end
 
 % Area Augmentations (mmWave radar specific)
 X_area_aug = X_area_clean;
-% Add Gaussian noise (20 dB SNR)
-sig_power = mean(X_area_aug.^2, 2);
-noise_power = sig_power ./ (10.^(20/10));
-noise = sqrt(noise_power) .* randn(size(X_area_aug));
-X_area_aug = X_area_aug + noise;
-
-% Add baseline drift (8%)
+% Add proportional Gaussian noise (25 dB SNR, relative to signal range)
 for i = 1:N_aug
+    sig_range = max(X_area_aug(i,:)) - min(X_area_aug(i,:));
+    noise_std = sig_range / (10^(25/20));  % 25 dB SNR
+    noise = noise_std * randn(1, T_aug);
+    X_area_aug(i,:) = X_area_aug(i,:) + noise;
+end
+
+% Add baseline drift (2% of signal range)
+for i = 1:N_aug
+    sig_range = max(X_area_clean(i,:)) - min(X_area_clean(i,:));
     drift_freq = 0.1 + 0.3*rand();
-    drift = 0.08 * sin(2*pi*drift_freq*t_drift + 2*pi*rand());
+    drift = 0.02 * sig_range * sin(2*pi*drift_freq*t_drift + 2*pi*rand());
     X_area_aug(i,:) = X_area_aug(i,:) + drift;
 end
 
-% Add motion artifacts (40% probability)
+% Add motion artifacts (30% probability, scaled to signal)
 for i = 1:N_aug
-    if rand() < 0.4
+    if rand() < 0.3
+        sig_range = max(X_area_clean(i,:)) - min(X_area_clean(i,:));
         spike_start = randi([1, T_aug-20]);
         spike_dur = randi([5, 15]);
         spike_end = min(spike_start + spike_dur, T_aug);
         spike_t = 1:spike_dur;
-        spike = 0.3 * exp(-spike_t/3) .* (2*rand()-1);
+        spike = 0.05 * sig_range * exp(-spike_t/3) .* (2*rand()-1);
         X_area_aug(i, spike_start:spike_end-1) = X_area_aug(i, spike_start:spike_end-1) + spike(1:length(spike_start:spike_end-1));
     end
 end
