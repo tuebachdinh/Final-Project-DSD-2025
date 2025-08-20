@@ -720,38 +720,38 @@ figure('Position', [100, 100, 1200, 600]);
 
 % Compare key features: RI, SI, AGI
 subplot(2,3,1);
-scatter(RI(good_aug), RI_aug, 30, 'filled', 'alpha', 0.6); hold on;
+scatter(RI(good_aug), RI_aug, 30, 'filled'); hold on;
 plot([min(RI(good_aug)), max(RI(good_aug))], [min(RI(good_aug)), max(RI(good_aug))], 'k--');
 xlabel('Clean RI'); ylabel('Augmented RI'); title('Reflection Index');
 grid on; axis equal;
 
 subplot(2,3,2);
-scatter(SI(good_aug), SI_aug, 30, 'filled', 'alpha', 0.6); hold on;
+scatter(SI(good_aug), SI_aug, 30, 'filled'); hold on;
 plot([min(SI(good_aug)), max(SI(good_aug))], [min(SI(good_aug)), max(SI(good_aug))], 'k--');
 xlabel('Clean SI'); ylabel('Augmented SI'); title('Stiffness Index');
 grid on; axis equal;
 
 subplot(2,3,3);
-scatter(AGImod(good_aug), AGImod_aug, 30, 'filled', 'alpha', 0.6); hold on;
+scatter(AGImod(good_aug), AGImod_aug, 30, 'filled'); hold on;
 plot([min(AGImod(good_aug)), max(AGImod(good_aug))], [min(AGImod(good_aug)), max(AGImod(good_aug))], 'k--');
 xlabel('Clean AGI'); ylabel('Augmented AGI'); title('Aging Index');
 grid on; axis equal;
 
 % Compare area features
 subplot(2,3,4);
-scatter(Amax(good_aug), Amax_aug, 30, 'filled', 'alpha', 0.6); hold on;
+scatter(Amax(good_aug), Amax_aug, 30, 'filled'); hold on;
 plot([min(Amax(good_aug)), max(Amax(good_aug))], [min(Amax(good_aug)), max(Amax(good_aug))], 'k--');
 xlabel('Clean Amax'); ylabel('Augmented Amax'); title('Max Area');
 grid on; axis equal;
 
 subplot(2,3,5);
-scatter(xcorr_pp(good_aug), xcorr_pp_aug, 30, 'filled', 'alpha', 0.6); hold on;
+scatter(xcorr_pp(good_aug), xcorr_pp_aug, 30, 'filled'); hold on;
 plot([min(xcorr_pp(good_aug)), max(xcorr_pp(good_aug))], [min(xcorr_pp(good_aug)), max(xcorr_pp(good_aug))], 'k--');
 xlabel('Clean Cross-corr'); ylabel('Augmented Cross-corr'); title('PPG-Area Correlation');
 grid on; axis equal;
 
 subplot(2,3,6);
-scatter(PWV_cf(good_aug), PWV_cf_augmented, 30, 'filled', 'alpha', 0.6); hold on;
+scatter(PWV_cf(good_aug), PWV_cf_augmented, 30, 'filled'); hold on;
 plot([min(PWV_cf(good_aug)), max(PWV_cf(good_aug))], [min(PWV_cf(good_aug)), max(PWV_cf(good_aug))], 'k--');
 xlabel('Clean PWV'); ylabel('Augmented PWV'); title('Target PWV');
 grid on; axis equal;
@@ -920,19 +920,24 @@ end
 
 % ---------- 8.2 Train/Test split ----------
 idx = randperm(N);
-nTrain = round(0.8*N);
-trainIdx = idx(1:nTrain);
-testIdx = idx(nTrain+1:end);
+nTrain = round(0.6*N);
+nVal = round(0.2*N);
+
+valIdx = idx(1:nVal);
+trainIdx = idx(nVal+1:nVal+nTrain);
+testIdx = idx(nVal+nTrain+1:end);
 
 % ---------- 8.3 Training options ----------
 opts = trainingOptions('adam', ...
     'InitialLearnRate', 1e-3, ...
-    'MaxEpochs', 40, ...
+    'MaxEpochs', 55, ...
     'MiniBatchSize', 32, ...
     'Shuffle', 'every-epoch', ...
     'Verbose', true, ...
     'Plots', 'training-progress', ...
-    'ValidationFrequency', 10);
+    'ValidationData', {seqData(valIdx), y(valIdx)}, ...
+    'ValidationFrequency', 20, ...
+    'ValidationPatience', 15);
 
 % ---------- 8.4 Simple 1D CNN Model ----------
 fprintf('\n--- Training CNN Model ---\n');
