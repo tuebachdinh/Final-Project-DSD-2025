@@ -352,7 +352,7 @@ for i = 1:length(wave_types)
 end
 
 %% Part 5: Use of Signal Processing Algorithms to extract features, indexes from PW
-addpath('/Users/tueeee/MATLAB-Drive/Final-Project-DSD-2025/algorithms/');
+addpath('/Users/edintue/Downloads/Final-Project-DSD-2025/algorithms/');
 
 % --- Choose a subject and extract their PPG waveform ---
 subject_idx = 1; % Or any plausible subject index
@@ -480,125 +480,7 @@ sgtitle('Comparison: Old vs New PulseAnalyse');
 
 
 
-%% --- Part 6: Feature-based Machine Learning (PPG + Area + Timing) ---
-% Goal: Build a robust feature set (cheap to compute), train light models,
-% and evaluate R^2 / RMSE / MAE. Save the best model for later transfer.
 
-rng(42);  % reproducibility
-
-% ---------- 6.1 Assemble features per subject ----------
-Nsubj = numel(plaus_idx);
-
-% -- PPG classical (from haemods) --
-RI     = [haemods(plaus_idx).RI]';
-SI     = [haemods(plaus_idx).SI]';
-AGImod = [haemods(plaus_idx).AGI_mod]';
-
-% -- PPG sdPPG & morphology (from pw_inds) --
-PPGa   = pw_inds.Radial_PPGa_V(plaus_idx);
-PPGb   = pw_inds.Radial_PPGb_V(plaus_idx);
-PPGc   = pw_inds.Radial_PPGc_V(plaus_idx);
-PPGd   = pw_inds.Radial_PPGd_V(plaus_idx);
-PPGe   = pw_inds.Radial_PPGe_V(plaus_idx);
-PPGsys = pw_inds.Radial_PPGsys_V(plaus_idx);
-PPGdia = pw_inds.Radial_PPGdia_V(plaus_idx);
-PPGdic = pw_inds.Radial_PPGdic_V(plaus_idx);
-PPGms  = pw_inds.Radial_PPGms_V(plaus_idx);
-
-% -- Area (A) features at wrist (Radial) --
-Amax   = pw_inds.Radial_Amax_V(plaus_idx);   
-Amin   = pw_inds.Radial_Amin(plaus_idx);
-Amean  = pw_inds.Radial_Amean(plaus_idx);
-Astk   = Amax - Amin;                                % stroke area change
-Aosc   = (Amax - Amin) ./ max(Amean, eps);           % relative oscillation 
-
-
-% -- Timing features --
-if ~exist('PTT_aor_to_rad','var') || isempty(PTT_aor_to_rad)
-    onset_aortic = data.waves.onset_times.P_AorticRoot(plaus_idx);
-    onset_radial = data.waves.onset_times.P_Radial(plaus_idx);
-    PTT_aor_to_rad = onset_radial - onset_aortic;    % secs
-end
-HR = [haemods(plaus_idx).HR]';                        % bpm
-LVET = [haemods(plaus_idx).LVET]';                    % ms (proxy for systole dur)
-PFT  = [haemods(plaus_idx).PFT]';                     % ms (time of peak aortic flow)
-
-% -- Coupling features between PPG & Area (wrist) --
-PPG_R = waves.PPG_Radial;     % [N x T]
-A_R   = waves.A_Radial;       % [N x T]
-Tpts  = size(PPG_R,2);
-tgrid = (0:Tpts-1)./fs;
-
-% peak timings (in seconds)
-[~, ppg_pk_idx] = max(PPG_R, [], 2);
-[~,  A_pk_idx ] = max(A_R,   [], 2);
-t_ppg_pk = tgrid(ppg_pk_idx)';
-t_A_pk   = tgrid(A_pk_idx)';
-lag_A_vs_PPG = t_A_pk - t_ppg_pk;             % +ve: A peaks after PPG
-
-% simple cross-correlation over systole (use first half of the beat)
-mid_idx = round(Tpts*0.6);
-xcorr_pp = nan(Nsubj,1);
-for ii = 1:Nsubj
-    x1 = detrend(PPG_R(ii,1:mid_idx));
-    x2 = detrend(A_R(ii,1:mid_idx));
-    c  = corr(x1(:), x2(:), 'rows','complete');
-    xcorr_pp(ii) = c;
-end
-
-% -- Simple peak detection features on PPG (cheap & robust) --
-% Find primary and secondary peaks using simple methods
-P1samp = nan(Nsubj,1); P2samp = nan(Nsubj,1);
-P1_amp = nan(Nsubj,1); P2_amp = nan(Nsubj,1);
-for ii = 1:Nsubj
-    x = PPG_R(ii,:)';
-    % min-max normalize
-    xx = x; 
-    rngv = max(xx)-min(xx);
-    if rngv > 0, xx = (xx - min(xx)) / rngv; end
-    
-    % Find primary peak (systolic)
-    [P1_amp(ii), P1samp(ii)] = max(xx);
-    
-    % Find secondary peak (dicrotic) in second half
-    mid_idx = round(length(xx)/2);
-    if P1samp(ii) < mid_idx
-        [P2_amp(ii), p2_rel] = max(xx(P1samp(ii)+10:end));
-        P2samp(ii) = P1samp(ii) + 10 + p2_rel - 1;
-    else
-        P2_amp(ii) = 0;
-        P2samp(ii) = length(xx);
-    end
-end
-% Convert P1/P2 sample indices to sec (relative to beat start)
-tP1 = P1samp./fs;  tP2 = P2samp./fs;  dTPeaks = tP2 - tP1;
-
-% -- Build feature table --
-y = PWV_cf(:);                               % target (m/s)
-Xtbl = table( ...
-    age(:), HR(:), LVET(:), PFT(:), ...
-    RI(:), SI(:), AGImod(:), ...
-    PPGa(:), PPGb(:), PPGc(:), PPGd(:), PPGe(:), ...
-    PPGsys(:), PPGdia(:), PPGdic(:), PPGms(:), ...
-    Amax(:), Amin(:), Amean(:), Astk(:), Aosc(:), ...
-    PTT_aor_to_rad(:), ...
-    t_ppg_pk(:), t_A_pk(:), lag_A_vs_PPG(:), xcorr_pp(:), ...
-    P1_amp, P2_amp, tP1, tP2, dTPeaks, ...
-    y, ...
-    'VariableNames', { ...
-    'Age','HR','LVET','PFT', ...
-    'RI','SI','AGImod', ...
-    'PPGa','PPGb','PPGc','PPGd','PPGe', ...
-    'PPGsys','PPGdia','PPGdic','PPGms', ...
-    'Amax','Amin','Amean','Astk','Aosc', ...
-    'PTT_hw', ...
-    'tPPGpk','tApk','lagAminusPPG','xcorrSyst', ...
-    'P1_amp','P2_amp','tP1','tP2','dTPeaks', ...
-    'PWV_cf'});
-
-% Clean NaNs/Infs
-bad = any(~isfinite(Xtbl{:,:}), 2);
-Xtbl = Xtbl(~bad, :);
 
 %% --- Part 6: Data Augmentation for Real-World Simulation ---
 % Simulate realistic noise and artifacts for wrist-based devices
@@ -688,24 +570,189 @@ PWV_cf_augmented = y_aug;
 
 fprintf('Using augmented-only dataset: %d subjects\n', length(y_aug));
 
+% ---------- 6.4 Visualization: Clean vs Augmented Data ----------
+figure('Position', [100, 100, 1400, 800]);
+
+% Select random samples for comparison
+sample_idx = randperm(N_aug, 6);
+t_plot = (1:T_aug)/fs;
+
+% PPG Comparison
+for i = 1:6
+    subplot(3,4,i);
+    plot(t_plot, X_ppg_clean(sample_idx(i),:), 'b-', 'LineWidth', 1.5); hold on;
+    plot(t_plot, X_ppg_aug(sample_idx(i),:), 'r--', 'LineWidth', 1);
+    title(sprintf('PPG Subject %d', sample_idx(i)));
+    xlabel('Time (s)'); ylabel('PPG (a.u.)');
+    if i == 1, legend('Clean', 'Augmented', 'Location', 'best'); end
+    grid on;
+end
+
+% Area Comparison
+for i = 1:6
+    subplot(3,4,i+6);
+    plot(t_plot, X_area_clean(sample_idx(i),:), 'b-', 'LineWidth', 1.5); hold on;
+    plot(t_plot, X_area_aug(sample_idx(i),:), 'r--', 'LineWidth', 1);
+    title(sprintf('Area Subject %d', sample_idx(i)));
+    xlabel('Time (s)'); ylabel('Area (m²)');
+    if i == 1, legend('Clean', 'Augmented', 'Location', 'best'); end
+    grid on;
+end
+
+sgtitle('Data Augmentation: Clean vs Augmented Signals');
+
+% Signal Quality Metrics
+snr_ppg = 10*log10(mean(var(X_ppg_clean, 0, 2)) / mean(var(X_ppg_aug - X_ppg_clean, 0, 2)));
+snr_area = 10*log10(mean(var(X_area_clean, 0, 2)) / mean(var(X_area_aug - X_area_clean, 0, 2)));
+
+fprintf('\n=== Augmentation Quality Metrics ===\n');
+fprintf('PPG SNR after augmentation: %.1f dB\n', snr_ppg);
+fprintf('Area SNR after augmentation: %.1f dB\n', snr_area);
+
 
 
 %% --- Part 7: Classical ML with Augmented Data ---
 
-% ---------- 7.1 Update features with augmented data ----------
-% Use only augmented features (add noise to all features)
-Xtbl_aug = Xtbl; % Start with clean features
-Xtbl_aug{:, 'PWV_cf'} = PWV_cf_augmented; % Use augmented labels
+% ---------- 7.1 Extract comprehensive features from augmented data ----------
+fprintf('\n=== Extracting comprehensive features from augmented data ===\n');
 
-% Add realistic feature noise to all features (except PWV_cf)
-for i = 1:height(Xtbl_aug)
-    for j = 1:(width(Xtbl_aug)-1)
-        if isnumeric(Xtbl_aug{i,j})
-            noise_level = 0.05 * abs(Xtbl_aug{i,j}); % 5% noise
-            Xtbl_aug{i,j} = Xtbl_aug{i,j} + noise_level * randn();
+Nsubj_aug = size(waves_augmented.PPG_Radial, 1);
+PPG_R_aug = waves_augmented.PPG_Radial;
+A_R_aug = waves_augmented.A_Radial;
+
+% -- PPG classical features (extract from augmented PPG) --
+RI_aug = nan(Nsubj_aug,1); SI_aug = nan(Nsubj_aug,1); AGImod_aug = nan(Nsubj_aug,1);
+for ii = 1:Nsubj_aug
+    try
+        S_temp.v = PPG_R_aug(ii,:)';
+        S_temp.fs = fs;
+        options_temp.do_plot = false; options_temp.verbose = false;
+        [pw_inds_temp, ~, ~, ~] = PulseAnalyse(S_temp, options_temp);
+        if ~isempty(pw_inds_temp)
+            if isfield(pw_inds_temp, 'RI'), RI_aug(ii) = pw_inds_temp.RI.v; end
+            if isfield(pw_inds_temp, 'SI'), SI_aug(ii) = pw_inds_temp.SI.v; end
+            if isfield(pw_inds_temp, 'AGI_mod'), AGImod_aug(ii) = pw_inds_temp.AGI_mod.v; end
         end
+    catch, continue; end
+end
+
+% -- Area features at wrist (from augmented Area) --
+Amax_aug = max(A_R_aug, [], 2);
+Amin_aug = min(A_R_aug, [], 2);
+Amean_aug = mean(A_R_aug, 2);
+Astk_aug = Amax_aug - Amin_aug;
+Aosc_aug = (Amax_aug - Amin_aug) ./ max(Amean_aug, eps);
+
+% -- Timing features (use original values with small noise) --
+HR_aug = HR(good_aug) + 0.05*HR(good_aug).*randn(Nsubj_aug,1);
+LVET_aug = LVET(good_aug) + 0.05*LVET(good_aug).*randn(Nsubj_aug,1);
+PFT_aug = PFT(good_aug) + 0.05*PFT(good_aug).*randn(Nsubj_aug,1);
+PTT_aug = PTT_aor_to_rad(good_aug) + 0.05*PTT_aor_to_rad(good_aug).*randn(Nsubj_aug,1);
+
+% -- Coupling features between augmented PPG & Area --
+Tpts_aug = size(PPG_R_aug,2);
+tgrid_aug = (0:Tpts_aug-1)./fs;
+[~, ppg_pk_idx_aug] = max(PPG_R_aug, [], 2);
+[~, A_pk_idx_aug] = max(A_R_aug, [], 2);
+t_ppg_pk_aug = tgrid_aug(ppg_pk_idx_aug)';
+t_A_pk_aug = tgrid_aug(A_pk_idx_aug)';
+lag_A_vs_PPG_aug = t_A_pk_aug - t_ppg_pk_aug;
+
+% Cross-correlation over systole
+mid_idx_aug = round(Tpts_aug*0.6);
+xcorr_pp_aug = nan(Nsubj_aug,1);
+for ii = 1:Nsubj_aug
+    x1 = detrend(PPG_R_aug(ii,1:mid_idx_aug));
+    x2 = detrend(A_R_aug(ii,1:mid_idx_aug));
+    c = corr(x1(:), x2(:), 'rows','complete');
+    xcorr_pp_aug(ii) = c;
+end
+
+% -- Simple peak detection on augmented PPG --
+P1samp_aug = nan(Nsubj_aug,1); P2samp_aug = nan(Nsubj_aug,1);
+P1_amp_aug = nan(Nsubj_aug,1); P2_amp_aug = nan(Nsubj_aug,1);
+for ii = 1:Nsubj_aug
+    x = PPG_R_aug(ii,:)';
+    xx = x; rngv = max(xx)-min(xx);
+    if rngv > 0, xx = (xx - min(xx)) / rngv; end
+    [P1_amp_aug(ii), P1samp_aug(ii)] = max(xx);
+    mid_idx = round(length(xx)/2);
+    if P1samp_aug(ii) < mid_idx
+        [P2_amp_aug(ii), p2_rel] = max(xx(P1samp_aug(ii)+10:end));
+        P2samp_aug(ii) = P1samp_aug(ii) + 10 + p2_rel - 1;
+    else
+        P2_amp_aug(ii) = 0; P2samp_aug(ii) = length(xx);
     end
 end
+tP1_aug = P1samp_aug./fs; tP2_aug = P2samp_aug./fs; dTPeaks_aug = tP2_aug - tP1_aug;
+
+% -- Build comprehensive augmented feature table --
+y_aug = PWV_cf_augmented;
+Xtbl_aug = table( ...
+    age(good_aug), HR_aug, LVET_aug, PFT_aug, ...
+    RI_aug, SI_aug, AGImod_aug, ...
+    Amax_aug, Amin_aug, Amean_aug, Astk_aug, Aosc_aug, ...
+    PTT_aug, ...
+    t_ppg_pk_aug, t_A_pk_aug, lag_A_vs_PPG_aug, xcorr_pp_aug, ...
+    P1_amp_aug, P2_amp_aug, tP1_aug, tP2_aug, dTPeaks_aug, ...
+    y_aug, ...
+    'VariableNames', { ...
+    'Age','HR','LVET','PFT', ...
+    'RI','SI','AGImod', ...
+    'Amax','Amin','Amean','Astk','Aosc', ...
+    'PTT_hw', ...
+    'tPPGpk','tApk','lagAminusPPG','xcorrSyst', ...
+    'P1_amp','P2_amp','tP1','tP2','dTPeaks', ...
+    'PWV_cf'});
+
+% Clean NaNs/Infs
+bad_aug = any(~isfinite(Xtbl_aug{:,:}), 2);
+Xtbl_aug = Xtbl_aug(~bad_aug, :);
+
+fprintf('Extracted %d features from %d augmented subjects\n', width(Xtbl_aug)-1, height(Xtbl_aug));
+
+% ---------- 7.1.1 Feature Comparison Visualization ----------
+figure('Position', [100, 100, 1200, 600]);
+
+% Compare key features: RI, SI, AGI
+subplot(2,3,1);
+scatter(RI(good_aug), RI_aug, 30, 'filled', 'alpha', 0.6); hold on;
+plot([min(RI(good_aug)), max(RI(good_aug))], [min(RI(good_aug)), max(RI(good_aug))], 'k--');
+xlabel('Clean RI'); ylabel('Augmented RI'); title('Reflection Index');
+grid on; axis equal;
+
+subplot(2,3,2);
+scatter(SI(good_aug), SI_aug, 30, 'filled', 'alpha', 0.6); hold on;
+plot([min(SI(good_aug)), max(SI(good_aug))], [min(SI(good_aug)), max(SI(good_aug))], 'k--');
+xlabel('Clean SI'); ylabel('Augmented SI'); title('Stiffness Index');
+grid on; axis equal;
+
+subplot(2,3,3);
+scatter(AGImod(good_aug), AGImod_aug, 30, 'filled', 'alpha', 0.6); hold on;
+plot([min(AGImod(good_aug)), max(AGImod(good_aug))], [min(AGImod(good_aug)), max(AGImod(good_aug))], 'k--');
+xlabel('Clean AGI'); ylabel('Augmented AGI'); title('Aging Index');
+grid on; axis equal;
+
+% Compare area features
+subplot(2,3,4);
+scatter(Amax(good_aug), Amax_aug, 30, 'filled', 'alpha', 0.6); hold on;
+plot([min(Amax(good_aug)), max(Amax(good_aug))], [min(Amax(good_aug)), max(Amax(good_aug))], 'k--');
+xlabel('Clean Amax'); ylabel('Augmented Amax'); title('Max Area');
+grid on; axis equal;
+
+subplot(2,3,5);
+scatter(xcorr_pp(good_aug), xcorr_pp_aug, 30, 'filled', 'alpha', 0.6); hold on;
+plot([min(xcorr_pp(good_aug)), max(xcorr_pp(good_aug))], [min(xcorr_pp(good_aug)), max(xcorr_pp(good_aug))], 'k--');
+xlabel('Clean Cross-corr'); ylabel('Augmented Cross-corr'); title('PPG-Area Correlation');
+grid on; axis equal;
+
+subplot(2,3,6);
+scatter(PWV_cf(good_aug), PWV_cf_augmented, 30, 'filled', 'alpha', 0.6); hold on;
+plot([min(PWV_cf(good_aug)), max(PWV_cf(good_aug))], [min(PWV_cf(good_aug)), max(PWV_cf(good_aug))], 'k--');
+xlabel('Clean PWV'); ylabel('Augmented PWV'); title('Target PWV');
+grid on; axis equal;
+
+sgtitle('Feature Comparison: Clean vs Augmented Data');
 
 % ---------- 7.2 Train/test split ----------
 N = height(Xtbl_aug);
@@ -879,9 +926,13 @@ opts = trainingOptions('adam', ...
     'MaxEpochs', 40, ...
     'MiniBatchSize', 32, ...
     'Shuffle', 'every-epoch', ...
-    'Verbose', false);
+    'Verbose', true, ...
+    'Plots', 'training-progress', ...
+    'ValidationFrequency', 10);
 
 % ---------- 8.4 Simple 1D CNN Model ----------
+fprintf('\n--- Training CNN Model ---\n');
+tic;
 layers = [
     sequenceInputLayer(2, 'MinLength', T, 'Name', 'input')
     convolution1dLayer(10, 64, 'Padding', 'same')
@@ -897,6 +948,8 @@ layers = [
 
 % Train CNN
 net_cnn = trainNetwork(seqData(trainIdx), y(trainIdx), layers, opts);
+cnn_time = toc;
+fprintf('CNN training completed in %.1f seconds\n', cnn_time);
 
 % Evaluate CNN 
 yp_cnn = predict(net_cnn, seqData(testIdx));
@@ -910,6 +963,8 @@ RMSE_cnn = sqrt(mean(resid_cnn.^2));
 
 
 % ---------- 8.5 GRU Model ----------
+fprintf('\n--- Training GRU Model ---\n');
+tic;
 layers_gru = [
     sequenceInputLayer(2, 'Name', 'input')
     gruLayer(64, 'OutputMode', 'last')
@@ -921,6 +976,8 @@ layers_gru = [
 
 % Train GRU
 net_gru = trainNetwork(seqData(trainIdx), y(trainIdx), layers_gru, opts);
+gru_time = toc;
+fprintf('GRU training completed in %.1f seconds\n', gru_time);
 
 % Evaluate GRU
 yp_gru = predict(net_gru, seqData(testIdx));
