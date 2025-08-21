@@ -1,17 +1,20 @@
-# Machine Learning Analysis of Wrist Pulse Waveforms for Arterial Stiffness Estimation
+# Comprehensive Machine Learning Pipeline for Arterial Stiffness Estimation from Wrist Pulse Signals
 
 ## Project Goal
 
-This project aims to **quantify and predict arterial stiffness from wrist pulse waveforms**—focusing on both simulated pressure and photoplethysmogram (PPG) signals—using classical and machine learning methods.  
-Our broader objective is to understand how arterial stiffness (central pulse wave velocity, PWV) is reflected in wrist pulse morphology, and to lay the groundwork for **practical, non-invasive vascular health monitoring with consumer wearable devices**.
+This project develops a **comprehensive machine learning pipeline** for predicting arterial stiffness from wrist pulse waveforms using **signal processing, classical ML, deep learning, and model interpretability techniques**. The pipeline progresses from in silico data analysis to real-world device deployment through **transfer learning and domain adaptation**.
+
+Our objective is to create a **robust, interpretable, and deployable system** for non-invasive cardiovascular health monitoring using consumer wearable devices.
 
 ---
 
 ## Motivation
 
-- **Clinical importance:** Arterial stiffness (cfPWV) is a critical marker for cardiovascular risk, but direct measurement requires clinical-grade equipment.
-- **Wearable potential:** Wrist-based pulse signals (PPG/pressure) can be easily acquired by smartwatches and fitness bands.
-- **Scientific challenge:** It is not fully understood how central stiffness affects peripheral waveform shape, especially in the presence of noise, real-life variation, or consumer hardware constraints.
+- **Clinical Impact:** Arterial stiffness (cfPWV) predicts cardiovascular events but requires expensive clinical equipment
+- **Wearable Revolution:** Consumer devices can capture pulse signals but lack validated algorithms for health assessment
+- **AI Opportunity:** Advanced ML/DL can extract physiological insights from noisy, real-world wearable data
+- **Interpretability Need:** Clinical adoption requires understanding what models learn from pulse morphology
+- **Transfer Challenge:** Bridging the gap between clean simulated data and noisy real-world signals
 
 ---
 
@@ -37,52 +40,133 @@ Our broader objective is to understand how arterial stiffness (central pulse wav
 
 ---
 
-## Project Workflow
+## Repository Structure
 
-### 1. Data Exploration & Preparation
-- Load simulated pulse waveforms (pressure or PPG) at the wrist for all subjects.
-- Filter for physiologically plausible signals.
-- Visualize waveforms across different stiffness (PWV) levels.
+```
+Final-Project-DSD-2025/
+├── src/                      # Analysis pipeline (Parts 1-9)
+├── utils/                    # Utility functions
+│   ├── others/              # General utilities (save_figure)
+│   ├── deep_learning/       # Model interpretability
+│   └── signal_processing/   # PPG/pulse analysis
+├── data/                    # Dataset storage
+├── models/                  # Trained models
+├── images/                  # Generated figures
+└── README.md               # This file
+```
 
-### 2. Feature Engineering & Classical Analysis
-- Extract morphological features: pulse height, upstroke/downstroke times, slopes, area-under-curve, systolic/diastolic times, and classical PPG indices (Reflection Index, Stiffness Index, Modified Aging Index).
-- Correlate features with cfPWV.
-- Visualize how waveform shape encodes arterial stiffness.
+## Analysis Pipeline
 
-### 3. Machine Learning Modeling
-- **Feature-based regression:** Use extracted features as input for linear or non-linear models to predict cfPWV.
-- **Waveform-driven regression:** Use the entire waveform as input for ML (e.g., regression trees, random forests, shallow neural nets).
-- Benchmark ML performance vs. classical index-based approaches.
+### Part 1: Data Preparation (`src/1_data_preparation.m`)
+- Load PWDB dataset and filter plausible subjects
+- Extract waveforms (pressure, flow, area, PPG) at multiple sites
+- Prepare data structures for analysis
 
-### 4. Interpretation & Insight
-- Analyze model accuracy, interpretability, and key predictive features.
-- Discuss practical implications for wearable/consumer devices.
+### Part 2: Visualization (`src/2_visualization.m`)
+- Plot waveforms by PWV groups (low/medium/high stiffness)
+- Visualize age-related changes in pulse morphology
+- Generate comparative plots across signal types
 
-### 5. **Real-World Extension (Future)**
-- Integrate and test with real wrist PPG/pressure signals from actual hardware (e.g., smartwatches, custom PPG sensors).
-- Assess model robustness to noise, movement artifacts, skin tone, sensor placement, and individual variation.
-- Explore calibration strategies and transfer learning to bridge the gap between in silico and real-world data.
+### Part 3: PTT Analysis (`src/3_ptt_analysis.m`)
+- Analyze pulse transit time from heart to wrist
+- Examine PTT distribution and age relationships
+- Validate timing-based stiffness indicators
+
+### Part 4: Feature Regression (`src/4_feature_regression.m`)
+- Linear regression with area-based features
+- Tree regression with classical PPG indices (RI, SI, AGI)
+- Compare feature-based vs. direct waveform approaches
+
+### Part 5: ML Waveforms (`src/5_ml_waveforms.m`)
+- Machine learning on raw waveform time series
+- Regression trees for area and PPG signals
+- Performance comparison across signal modalities
+
+### Part 6: Signal Processing (`src/6_signal_processing.m`)
+- Advanced PPG feature extraction algorithms
+- Dicrotic notch detection and Gaussian fitting
+- Signal quality assessment and morphology analysis
+
+### Part 7: Data Augmentation (`src/7_data_augmentation.m`)
+- Real-world noise simulation (baseline drift, motion artifacts)
+- SNR-controlled augmentation for robustness testing
+- Clean vs. augmented signal comparison
+
+### Part 8: Classical ML (`src/8_classical_ml.m`)
+- Ridge regression and decision trees on augmented data
+- Comprehensive feature extraction from PPG and area signals
+- Model comparison and performance evaluation
+
+### Part 9: Deep Learning (`src/9_deep_learning.m`)
+- CNN and GRU models for waveform-to-PWV prediction
+- Attention mechanisms for interpretability
+- Model interpretability analysis (occlusion, perturbation, attention)
+
+## Key Features
+
+### Model Interpretability
+- **Occlusion Analysis**: Identify critical waveform regions
+- **Perturbation Analysis**: Measure sensitivity to noise
+- **Attention Mechanisms**: Visualize model focus areas
+- **Feature Importance**: Rank predictive features
+
+### Real-World Simulation
+- Noise injection (25 dB SNR)
+- Baseline drift simulation
+- Motion artifact modeling
+- Signal quality assessment
 
 ---
 
-## Enhancement Opportunities
+## Pipeline Progression
 
-- **Cross-database validation:** Train on one synthetic dataset, test on the other, analyze transferability of features and models.
-- **End-to-end deep learning:** Try CNNs or RNNs for direct waveform-to-stiffness mapping, especially when large-scale real data is available.
-- **Domain adaptation:** Adapt in silico-trained models to real wrist data using domain adaptation or transfer learning.
-- **Noise robustness:** Test models on signals with added synthetic noise and/or real-world PPG noise/artifacts.
-- **Device-specific tuning:** Study and compensate for characteristics of specific wearable sensors.
-- **Personalization:** Investigate individualized models or calibration routines for subject-specific arterial property estimation.
+### Phase 1: In Silico Foundation (Current)
+- **Signal Processing**: Advanced PPG feature extraction and morphology analysis
+- **Classical ML**: Feature-based regression with interpretability
+- **Deep Learning**: CNN/GRU models with attention mechanisms
+- **Model Interpretability**: Occlusion, perturbation, and attention analysis
+- **Data Augmentation**: Real-world noise simulation for robustness
+
+### Phase 2: Real-World Deployment (Future)
+- **Transfer Learning**: Adapt in silico models to real device data
+- **Domain Adaptation**: Bridge simulation-to-reality gap
+- **Device Calibration**: Account for sensor-specific characteristics
+- **Personalization**: Individual-specific model fine-tuning
+- **Clinical Validation**: Validate against gold-standard measurements
+
+## Technical Innovations
+
+- **Multi-Modal Analysis**: Combines pressure, flow, area, and PPG signals
+- **Interpretable AI**: Explains which waveform features drive predictions
+- **Robust Augmentation**: Simulates real-world noise, drift, and motion artifacts
+- **Attention Mechanisms**: Identifies critical temporal regions in pulse cycles
+- **End-to-End Pipeline**: From raw signals to clinical predictions
 
 ---
 
 ## How to Use
 
-1. Download either database (see links above).
-2. Use provided Matlab scripts to extract features, process waveforms, and visualize results.
-3. Export features and labels (e.g., `radial_features_labels.csv`) for downstream ML in Python, MATLAB, or other frameworks.
-4. Use the provided Jupyter/Python notebooks as a template for model development, evaluation, and visualization.
-5. For real-world data, adapt scripts for your device and data format, and follow the same analysis pipeline.
+### Prerequisites
+- MATLAB R2020b or later with Deep Learning Toolbox
+- PWDB dataset (download from [GitHub](https://github.com/peterhcharlton/pwdb))
+
+### Quick Start
+1. **Setup Data**: Place `pwdb_data.mat` in `data/exported_data/`
+2. **Run Analysis**: Execute `src/main.m` or individual parts
+3. **View Results**: Check `images/` for generated plots and `models/` for trained networks
+
+### Running Individual Parts
+```matlab
+cd src/
+[waves, haemods, PWV_cf, age, fs, plaus_idx, data] = part1_data_preparation();
+part2_visualization(waves, PWV_cf, age, fs);
+% ... continue with other parts
+```
+
+### Output Structure
+- **Figures**: Automatically saved to `images/part[N]_[description].png`
+- **Models**: Trained networks saved to `models/part9_cnn_gru_models.mat`
+- **Analysis**: Interpretability results in `.mat` files
 
 ---
 
@@ -103,4 +187,4 @@ Contact: Dinh Bach Tue / tue.dinh@aalto.fi
 ---
 
 **Discussion and collaboration are welcome!**  
-We encourage contributions, feature ideas, and new datasets to help bring in silico insights into practical, real-world cardiovascular health monitoring.
+We encourage contributions to advance the pipeline from simulation to real-world deployment, bridging AI research with clinical cardiovascular monitoring.
