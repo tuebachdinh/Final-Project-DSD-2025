@@ -1,6 +1,8 @@
 function part3_ptt_analysis(data, plaus_idx, age)
 %PART3_PTT_ANALYSIS Insights about time delay and PTT analysis
 
+addpath('../utils/others');
+
 onsets = data.waves.onset_times;
 onset_aortic = onsets.P_AorticRoot(plaus_idx);
 onset_radial = onsets.P_Radial(plaus_idx);

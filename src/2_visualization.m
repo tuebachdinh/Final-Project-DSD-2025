@@ -1,6 +1,7 @@
 function part2_visualization(waves, PWV_cf, age, fs)
 %PART2_VISUALIZATION Plot waveforms by PWV groups and age groups
 
+addpath('../utils/others');
 wave_types = {'P', 'U', 'A', 'PPG'};
 
 % Part 2.1: Plot by PWV groups

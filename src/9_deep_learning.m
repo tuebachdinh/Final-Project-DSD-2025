@@ -1,6 +1,7 @@
 function part9_deep_learning(waves_augmented, PWV_cf_augmented)
 %PART9_DEEP_LEARNING Deep Learning Comparison (CNN vs GRU)
-addpath('/Users/edintue/Downloads/Final-Project-DSD-2025/algorithms/');
+addpath('../utils/others');
+addpath('../utils/deep_learning');
 
 rng(8);
 

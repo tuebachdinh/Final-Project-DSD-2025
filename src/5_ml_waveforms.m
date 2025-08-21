@@ -1,6 +1,8 @@
 function part5_ml_waveforms(waves, PWV_cf, age, fs)
 %PART5_ML_WAVEFORMS Machine Learning using Time Series on Full Waveforms
 
+addpath('../utils/others');
+
 % Part 5.1: Area waveforms
 X_A = waves.A_Radial;
 y = PWV_cf;

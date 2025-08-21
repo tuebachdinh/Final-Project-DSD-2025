@@ -1,6 +1,8 @@
 function part8_classical_ml(waves_augmented, PWV_cf_augmented, fs)
 %PART8_CLASSICAL_ML Classical ML with augmented data
 
+addpath('../utils/others');
+addpath('../utils/signal_processing');
 fprintf('\n=== Extracting comprehensive features from augmented data ===\n');
 
 Nsubj_aug = size(waves_augmented.PPG_Radial, 1);

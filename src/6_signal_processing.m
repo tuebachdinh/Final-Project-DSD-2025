@@ -1,7 +1,8 @@
 function part6_signal_processing(waves, fs)
 %PART6_SIGNAL_PROCESSING Signal processing algorithms for feature extraction
 
-addpath('/Users/edintue/Downloads/Final-Project-DSD-2025/algorithms/');
+addpath('../utils/others');
+addpath('../utils/signal_processing');
 
 subject_idx = 1;
 signal = waves.PPG_Radial(subject_idx, :);

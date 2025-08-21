@@ -1,6 +1,7 @@
 function part4_feature_regression(data, plaus_idx, PWV_cf, haemods)
 %PART4_FEATURE_REGRESSION Linear and tree regression with features
 
+addpath('../utils/others');
 pw_inds = data.pw_inds;
 
 % Part 4.1: Linear regression with area features

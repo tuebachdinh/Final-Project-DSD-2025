@@ -1,6 +1,7 @@
 function [waves_augmented, PWV_cf_augmented] = part7_data_augmentation(waves, PWV_cf, fs)
 %PART7_DATA_AUGMENTATION Data augmentation for real-world simulation
 
+addpath('../utils/others');
 rng(6);
 
 X_ppg_clean = waves.PPG_Radial;
