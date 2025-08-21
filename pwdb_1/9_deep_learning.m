@@ -1,5 +1,6 @@
 function part9_deep_learning(waves_augmented, PWV_cf_augmented)
 %PART9_DEEP_LEARNING Deep Learning Comparison (CNN vs GRU)
+addpath('/Users/edintue/Downloads/Final-Project-DSD-2025/algorithms/');
 
 rng(8);
 
@@ -124,5 +125,11 @@ xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
 title(sprintf('GRU: R^2 = %.3f', R2_gru));
 
 save('part9_cnn_gru_models.mat', 'net_cnn', 'net_gru', 'best_model', 'best_net');
+
+% Model Interpretability Analysis
+fprintf('\n--- Running Interpretability Analysis ---\n');
+model_interpretability(net_cnn, seqData(testIdx), ytrue, 'CNN');
+model_interpretability(net_gru, seqData(testIdx), ytrue, 'GRU');
+
 fprintf('Part 9: Deep learning completed\n');
 end
