@@ -1,7 +1,7 @@
 function [waves, haemods, PWV_cf, age, fs, plaus_idx, data] = part1_data_preparation()
 %PART1_DATA_PREPARATION Data Preparation and Wave Extraction
 
-data = load('exported_data/pwdb_data.mat');
+data = load('../data/exported_data/pwdb_data.mat');
 data = data.data;
 
 plausible = logical(data.plausibility.plausibility_log);
