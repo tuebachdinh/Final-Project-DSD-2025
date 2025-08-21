@@ -2,7 +2,7 @@
 
 ## Project Goal
 
-This project develops a **comprehensive deep learning pipeline** for predicting arterial stiffness from wrist pulse waveforms using **advanced signal processing, data visualization, deep neural networks (CNN/GRU), and model interpretability techniques**. The pipeline progresses from in silico data analysis to real-world device deployment through **transfer learning and domain adaptation**.
+This project develops a **comprehensive deep learning pipeline** for predicting arterial stiffness from wrist pulse waveforms using **advanced signal processing, data visualization, classical machine learning models, deep neural networks (CNN/GRU), and model interpretability techniques**. The pipeline progresses from in silico data analysis to real-world device deployment through **transfer learning and domain adaptation**.
 
 Our objective is to create a **robust, interpretable, and deployable system** for non-invasive cardiovascular health monitoring using consumer wearable devices.
 
@@ -20,16 +20,7 @@ Our objective is to create a **robust, interpretable, and deployable system** fo
 
 ## Datasets
 
-### 1. HaeMod Virtual Subjects (Willemet et al., Am J Physiol, 2015)(original-dataset)
-- **3,325 virtual subjects** with simulated pressure, flow, and area waveforms at multiple arterial locations, including the wrist (radial artery).
-- Provided simulation parameters and computed indices (cfPWV, cardiac output, geometry).
-- Download and documentation: [http://haemod.uk/original](http://haemod.uk/original)
-- Reference:  
-  Willemet M, Chowienczyk P, Alastruey J.  
-  *A database of virtual healthy subjects to assess the accuracy of foot-to-foot pulse wave velocities for estimation of aortic stiffness*.  
-  Am J Physiol Heart Circ Physiol, 2015. [Link](https://doi.org/10.1152/ajpheart.00175.2015)
-
-### 2. PWDB In Silico Database (Charlton et al., Am J Physiol, 2019)(pwdb_1)
+### 1. PWDB In Silico Database (Charlton et al., Am J Physiol, 2019)(main dataset)
 - **4,374 virtual subjects** with simulated pressure, flow, area, and PPG waveforms at multiple sites (including wrist PPG).
 - Includes demographic and hemodynamic diversity (ages 25–75).
 - Download: [https://github.com/peterhcharlton/pwdb](https://github.com/peterhcharlton/pwdb)
@@ -37,6 +28,15 @@ Our objective is to create a **robust, interpretable, and deployable system** fo
   Charlton PH, Mariscal Harana J, Vennin S, Li Y, Chowienczyk P, Alastruey J.  
   *Modeling arterial pulse waves in healthy aging: a database for in silico evaluation of hemodynamics and pulse wave indexes*.  
   Am J Physiol Heart Circ Physiol, 2019. [Link](https://doi.org/10.1152/ajpheart.00218.2019)
+
+### 2. HaeMod Virtual Subjects (Willemet et al., Am J Physiol, 2015)(archieved - no PPG)
+- **3,325 virtual subjects** with simulated pressure, flow, and area waveforms at multiple arterial locations, including the wrist (radial artery).
+- Provided simulation parameters and computed indices (cfPWV, cardiac output, geometry).
+- Download and documentation: [http://haemod.uk/original](http://haemod.uk/original)
+- Reference:  
+  Willemet M, Chowienczyk P, Alastruey J.  
+  *A database of virtual healthy subjects to assess the accuracy of foot-to-foot pulse wave velocities for estimation of aortic stiffness*.  
+  Am J Physiol Heart Circ Physiol, 2015. [Link](https://doi.org/10.1152/ajpheart.00175.2015)
 
 ---
 
@@ -52,10 +52,11 @@ Final-Project-DSD-2025/
 ├── data/                    # Dataset storage
 ├── models/                  # Trained models
 ├── images/                  # Generated figures
+├── archieved           # Archieved work from original dataset 
 └── README.md               # This file
 ```
 
-## Analysis Pipeline
+## Analysis Workflow Pipeline
 
 ### Part 1: Data Preparation (`src/1_data_preparation.m`)
 - Load PWDB dataset and filter plausible subjects
