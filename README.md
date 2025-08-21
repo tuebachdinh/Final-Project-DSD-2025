@@ -1,8 +1,8 @@
-# Comprehensive Machine Learning Pipeline for Arterial Stiffness Estimation from Wrist Pulse Signals
+# Deep Learning Pipeline for Arterial Stiffness Estimation from Wrist Pulse Signals
 
 ## Project Goal
 
-This project develops a **comprehensive machine learning pipeline** for predicting arterial stiffness from wrist pulse waveforms using **signal processing, classical ML, deep learning, and model interpretability techniques**. The pipeline progresses from in silico data analysis to real-world device deployment through **transfer learning and domain adaptation**.
+This project develops a **comprehensive deep learning pipeline** for predicting arterial stiffness from wrist pulse waveforms using **advanced signal processing, data visualization, deep neural networks (CNN/GRU), and model interpretability techniques**. The pipeline progresses from in silico data analysis to real-world device deployment through **transfer learning and domain adaptation**.
 
 Our objective is to create a **robust, interpretable, and deployable system** for non-invasive cardiovascular health monitoring using consumer wearable devices.
 
@@ -121,6 +121,7 @@ Final-Project-DSD-2025/
 ## Pipeline Progression
 
 ### Phase 1: In Silico Foundation (Current)
+- **Data Visualization**: Comprehensive waveform analysis by stiffness and age groups
 - **Signal Processing**: Advanced PPG feature extraction and morphology analysis
 - **Classical ML**: Feature-based regression with interpretability
 - **Deep Learning**: CNN/GRU models with attention mechanisms
