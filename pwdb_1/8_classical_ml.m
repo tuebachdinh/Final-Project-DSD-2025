@@ -77,6 +77,7 @@ figure; scatter(Ytest, bestYp, 30, 'filled'); grid on; hold on;
 plot([min(Ytest) max(Ytest)],[min(Ytest) max(Ytest)],'k--','LineWidth',1.5);
 xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
 title(sprintf('Part 8 — %s: Test True vs Pred', bestName));
+save_figure('classical_ml_best_model', 8);
 
 fprintf('Part 8: Classical ML completed\n');
 end

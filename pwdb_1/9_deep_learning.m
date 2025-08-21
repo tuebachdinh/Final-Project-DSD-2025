@@ -123,6 +123,7 @@ scatter(ytrue, yp_gru, 30, 'filled'); grid on; hold on;
 plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.5);
 xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
 title(sprintf('GRU: R^2 = %.3f', R2_gru));
+save_figure('deep_learning_comparison', 9);
 
 save('part9_cnn_gru_models.mat', 'net_cnn', 'net_gru', 'best_model', 'best_net');
 

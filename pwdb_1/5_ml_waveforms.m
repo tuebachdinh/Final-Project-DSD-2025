@@ -26,6 +26,7 @@ scatter(y_test, y_predA, 40, 'filled'); grid on;
 hold on; plot([min(y_test) max(y_test)], [min(y_test) max(y_test)], 'k--','LineWidth',2);
 xlabel('True PWV'); ylabel('Predicted PWV');
 title('Test Set: PWV Regression (A_{Radial}, Tree Model)');
+save_figure('area_waveform_regression', 5);
 
 % Part 5.2: PPG waveforms
 X = waves.PPG_Radial;
@@ -54,6 +55,7 @@ plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', 'LineWidth',
 xlabel('True PWV'); ylabel('Predicted PWV');
 title('Test Set: Predicted vs. True PWV (Regression Tree)');
 grid on;
+save_figure('ppg_waveform_regression', 5);
 
 % Example visualization
 site = 'Radial';
@@ -68,6 +70,7 @@ for i = 1:length(wave_types)
     xlabel('Time (s)'); ylabel(wave_types{i});
     title(sprintf('%s (%s), Subject #%d',wave_types{i},site, subject_id));
 end
+save_figure('example_subject_waveforms', 5);
 
 fprintf('Part 5: ML waveforms analysis completed\n');
 end

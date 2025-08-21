@@ -19,6 +19,7 @@ disp(mdl);
 figure;
 plotResiduals(mdl,'fitted');
 title('Residuals of PWV_cf Regression');
+save_figure('linear_regression_residuals', 4);
 
 % Part 4.2: Tree regression with classical PPG feature-based
 RI = [haemods(plaus_idx).RI]';
@@ -50,6 +51,7 @@ plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', 'LineWidth',
 xlabel('True PWV'); ylabel('Predicted PWV');
 title('Test Set: Classical Features Tree Regression');
 grid on;
+save_figure('tree_regression_classical_features', 4);
 
 fprintf('Part 4: Feature regression completed\n');
 end

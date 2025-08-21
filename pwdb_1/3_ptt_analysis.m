@@ -21,6 +21,7 @@ xlabel('PTT (AorticRoot \rightarrow Radial) [s]');
 ylabel('Count');
 title('Distribution of Pulse Transit Time (PTT) from Heart to Wrist');
 grid on;
+save_figure('ptt_distribution', 3);
 
 unique_ages = unique(age);
 figure;
@@ -29,6 +30,7 @@ xlabel('Age (years)');
 ylabel('PTT (s)');
 title('PTT (Heart to Wrist) vs Age');
 grid on;
+save_figure('ptt_vs_age', 3);
 
 fprintf('Part 3: PTT analysis completed\n');
 end

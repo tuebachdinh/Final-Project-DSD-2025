@@ -99,6 +99,7 @@ end
 end
 
 function visualize_feature_importance(perm_imp, occl_imp, feature_names, model_type)
+save_figure(sprintf('feature_importance_%s', lower(model_type)), 0);
 %VISUALIZE_FEATURE_IMPORTANCE Plot feature importance rankings
 
 figure('Position', [100, 100, 1400, 600]);

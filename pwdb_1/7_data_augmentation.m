@@ -107,6 +107,7 @@ for i = 1:6
 end
 
 sgtitle('Data Augmentation: Clean vs Augmented Signals');
+save_figure('data_augmentation_comparison', 7);
 
 snr_ppg = 10*log10(mean(var(X_ppg_clean, 0, 2)) / mean(var(X_ppg_aug - X_ppg_clean, 0, 2)));
 snr_area = 10*log10(mean(var(X_area_clean, 0, 2)) / mean(var(X_area_aug - X_area_clean, 0, 2)));

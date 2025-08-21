@@ -81,6 +81,7 @@ for i = 1:numel(wave_types)
     legend('Location','best');
 end
 sgtitle(sprintf('Waveforms at %s with %s by PWV Group', site, band_note));
+save_figure('waveforms_by_pwv_groups', 2);
 end
 
 function plot_by_age_groups(waves, age, fs, wave_types)
@@ -108,6 +109,7 @@ for i = 1:length(wave_types)
     legend('Location','best');
 end
 sgtitle(sprintf('Waveforms at %s by Age Group', site));
+save_figure('waveforms_by_age_groups', 2);
 end
 
 function ylabel_str = get_ylabel(wave_type)

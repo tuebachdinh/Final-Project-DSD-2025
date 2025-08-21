@@ -26,6 +26,7 @@ hold on; plot(dic_idx, S.v(dic_idx), 'ro', 'MarkerSize', 8, 'DisplayName', 'Dicr
 legend('Signal','Dicrotic Notch');
 title('PPG with Detected Dicrotic Notch');
 xlabel('Sample'); ylabel('Amplitude');
+save_figure('ppg_dicrotic_notch_detection', 6);
 
 % Part 6.2: Gaussian fitting
 [fitCurve, params, p1_idx, p2_idx] = fitTwoGaussiansPPG(S.v);
@@ -37,6 +38,7 @@ plot([p1_idx, p2_idx], fitCurve([p1_idx, p2_idx]), 'ko', 'MarkerFaceColor','g','
 legend('show');
 title('Gaussian Fitting: P1 & P2 Detection');
 xlabel('Sample'); ylabel('Amplitude');
+save_figure('gaussian_fitting_p1_p2', 6);
 
 % Part 6.3: Frequency and morphology features
 features = extractFreqMorphFeatures(S.v, S.fs);
