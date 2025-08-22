@@ -28,7 +28,7 @@ X_combined = permute(X_combined, [3 2 1]); % [2 x T x N] for MATLAB
 
 seqData = cell(N,1);
 for i = 1:N
-    seqData{i} = X_combined(:,:,i); [2 x T]
+    seqData{i} = X_combined(:,:,i); %[2 x T]
 end
 
 % Train/Test split
@@ -128,7 +128,7 @@ save_figure('deep_learning_comparison', 9);
 
 % Find project root and save models
 current_dir = pwd;
-while ~exist(fullfile(current_dir, 'literature_review.md'), 'file')
+while ~exist(fullfile(current_dir, 'literature-review.md'), 'file')
     parent_dir = fileparts(current_dir);
     if strcmp(current_dir, parent_dir)
         error('Could not find project root');
