@@ -3,7 +3,7 @@ function save_figure(fig_name, part_num)
 %
 % Inputs:
 %   fig_name - name of the figure (without extension)
-%   part_num - part number (1-9)
+%   part_num - part number (1-10)
 
 % Find project root (contains README.md)
 current_dir = pwd;
@@ -24,12 +24,8 @@ end
 % Create filename with part prefix
 filename = fullfile(img_dir, sprintf('part%d_%s.png', part_num, fig_name));
 
-% Only save if file doesn't exist
-if ~exist(filename, 'file')
-    saveas(gcf, filename);
-    fprintf('Saved: %s\n', filename);
-else
-    fprintf('Already exists: %s\n', filename);
-end
+% Always overwrite
+saveas(gcf, filename);
+fprintf('Saved (overwritten if existed): %s\n', filename);
 
 end
