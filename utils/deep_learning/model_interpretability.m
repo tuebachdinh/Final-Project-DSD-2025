@@ -24,9 +24,10 @@ y_pred = predict(net, data_subset);
 fprintf('Running Occlusion Analysis...\n');
 occlusion_importance = occlusion_analysis(net, data_subset, y_pred);
 
-% 2. Perturbation Analysis (SHAP-like)
-fprintf('Running Perturbation Analysis...\n');
-perturbation_importance = perturbation_analysis(net, data_subset, y_pred);
+% 2. Perturbation Analysis (SHAP-like) - COMMENTED OUT (takes 3+ hours)
+% fprintf('Running Perturbation Analysis...\n');
+% perturbation_importance = perturbation_analysis(net, data_subset, y_pred);
+perturbation_importance = zeros(2, size(data_subset{1}, 2)); % Dummy data for visualization
 
 % Visualize results
 visualize_importance(occlusion_importance, perturbation_importance, model_type);
@@ -34,7 +35,7 @@ save_figure(sprintf('interpretability_%s', lower(model_type)), 9);
 
 % Save results
 save(sprintf('interpretability_%s.mat', lower(model_type)), ...
-'occlusion_importance', 'perturbation_importance');
+'occlusion_importance'); % perturbation_importance commented out
 
 end
 

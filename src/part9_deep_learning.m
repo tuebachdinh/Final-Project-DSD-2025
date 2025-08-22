@@ -149,12 +149,12 @@ metrics.GRU.MAE = MAE_gru;
 metrics.GRU.RMSE = RMSE_gru;
 metrics.GRU.training_time = gru_time;
 
-save(fullfile(models_dir, 'part9_cnn_gru_models.mat'), 'net_cnn', 'net_gru', 'best_model', 'best_net', 'metrics');
+% Save test data for interpretability analysis (Part 10)
+test_data.seqData = seqData(testIdx);
+test_data.ytrue = ytrue;
 
-% Model Interpretability Analysis
-fprintf('\n--- Running Interpretability Analysis ---\n');
-model_interpretability(net_cnn, seqData(testIdx), ytrue, 'CNN');
-model_interpretability(net_gru, seqData(testIdx), ytrue, 'GRU');
+save(fullfile(models_dir, 'part9_cnn_gru_models.mat'), 'net_cnn', 'net_gru', 'best_model', 'best_net', 'metrics', 'test_data');
 
 fprintf('Part 9: Deep learning completed\n');
+fprintf('Run part10_model_interpretability() for interpretability analysis\n');
 end
