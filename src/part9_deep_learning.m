@@ -128,7 +128,7 @@ save_figure('deep_learning_comparison', 9);
 
 % Find project root and save models
 current_dir = pwd;
-while ~exist(fullfile(current_dir, 'README.md'), 'file')
+while ~exist(fullfile(current_dir, 'literature_review.md'), 'file')
     parent_dir = fileparts(current_dir);
     if strcmp(current_dir, parent_dir)
         error('Could not find project root');

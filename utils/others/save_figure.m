@@ -7,7 +7,7 @@ function save_figure(fig_name, part_num)
 
 % Find project root (contains README.md)
 current_dir = pwd;
-while ~exist(fullfile(current_dir, 'README.md'), 'file')
+while ~exist(fullfile(current_dir, 'literature-review.md'), 'file')
     parent_dir = fileparts(current_dir);
     if strcmp(current_dir, parent_dir)
         error('Could not find project root');
