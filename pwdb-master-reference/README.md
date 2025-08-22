@@ -19,3 +19,5 @@ Version 1.0 (under preparation) will be used in the final published version of t
 Charlton P.H. *et al.* [**Modelling arterial pulse waves in healthy ageing: a database for in silico evaluation of haemodynamics and pulse wave indices**](https://peterhcharlton.github.io/pwdb/pwdb_article.html), [Under Review]
 
 Please see the [README](https://github.com/peterhcharlton/pwdb/tree/master/pwdb_v1.0) for this version for further details.
+
+# NOTE: To use this tool and generate the same images as in the article. RENAME THE data folder into pwdb_1. Change the path to the dataset. For more detail look into github link above

@@ -44,16 +44,17 @@ Our objective is to create a **robust, interpretable, and deployable system** fo
 
 ```
 Final-Project-DSD-2025/
-├── src/                      # Analysis pipeline (Parts 1-9)
-├── utils/                    # Utility functions
+├── src/                     # Analysis pipeline (Parts 1-9)
+├── utils/                   # Utility functions
 │   ├── others/              # General utilities (save_figure)
 │   ├── deep_learning/       # Model interpretability
 │   └── signal_processing/   # PPG/pulse analysis
 ├── data/                    # Dataset storage
 ├── models/                  # Trained models
 ├── images/                  # Generated figures
-├── archieved           # Archieved work from original dataset 
-└── README.md               # This file
+├── archieved                # Archieved work from original dataset 
+├── README.md                # This file
+└── pwdb-master-reference    # Predefined helper tools from article
 ```
 
 ## Analysis Workflow Pipeline
