@@ -139,7 +139,17 @@ models_dir = fullfile(current_dir, 'models');
 if ~exist(models_dir, 'dir')
     mkdir(models_dir);
 end
-save(fullfile(models_dir, 'part9_cnn_gru_models.mat'), 'net_cnn', 'net_gru', 'best_model', 'best_net');
+% Save performance metrics
+metrics.CNN.R2 = R2_cnn;
+metrics.CNN.MAE = MAE_cnn;
+metrics.CNN.RMSE = RMSE_cnn;
+metrics.CNN.training_time = cnn_time;
+metrics.GRU.R2 = R2_gru;
+metrics.GRU.MAE = MAE_gru;
+metrics.GRU.RMSE = RMSE_gru;
+metrics.GRU.training_time = gru_time;
+
+save(fullfile(models_dir, 'part9_cnn_gru_models.mat'), 'net_cnn', 'net_gru', 'best_model', 'best_net', 'metrics');
 
 % Model Interpretability Analysis
 fprintf('\n--- Running Interpretability Analysis ---\n');
