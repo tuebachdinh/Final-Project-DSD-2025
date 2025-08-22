@@ -25,16 +25,16 @@ fprintf('Running Occlusion Analysis...\n');
 occlusion_importance = occlusion_analysis(net, data_subset, y_pred);
 
 % 2. Perturbation Analysis (SHAP-like) - COMMENTED OUT (takes 3+ hours)
-% fprintf('Running Perturbation Analysis...\n');
-% perturbation_importance = perturbation_analysis(net, data_subset, y_pred);
-perturbation_importance = zeros(2, size(data_subset{1}, 2)); % Dummy data for visualization
+fprintf('Running Perturbation Analysis...\n');
+perturbation_importance = perturbation_analysis(net, data_subset, y_pred);
+%perturbation_importance = zeros(2, size(data_subset{1}, 2)); % Dummy data for visualization
 
 % Visualize results
 visualize_importance(occlusion_importance, perturbation_importance, model_type);
 save_figure(sprintf('interpretability_%s', lower(model_type)), 9);
 
 % Save results
-save(sprintf('interpretability_%s.mat', lower(model_type)), ...
+save(sprintf('interpretability_%s.mat', lower(model_type)), 'perturbation_importance', ...
 'occlusion_importance'); % perturbation_importance commented out
 
 end
@@ -78,13 +78,13 @@ T = size(seqData{1}, 2);
 n_channels = size(seqData{1}, 1);
 
 % Perturbation parameters
-noise_levels = [0.1, 0.2, 0.3]; % Relative noise levels
-n_perturbations = 20; % Monte Carlo samples
+noise_levels=[0.15 0.3]; % Relative noise levels
+n_perturbations = 10; % Monte Carlo samples
 
 importance = zeros(n_channels, T);
 
 for ch = 1:n_channels
-for t = 1:T
+for t=1:T
 sensitivity_scores = [];
 for noise_level = noise_levels
 for rep = 1:n_perturbations
