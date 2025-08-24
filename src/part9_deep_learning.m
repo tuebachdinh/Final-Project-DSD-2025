@@ -1,13 +1,17 @@
-function part9_deep_learning(waves_augmented, PWV_cf_augmented)
+function part9_deep_learning(waves, PWV_cf, waves_augmented, PWV_cf_augmented)
 %PART9_DEEP_LEARNING Deep Learning Comparison (CNN vs GRU)
 addpath('../utils/others');
 addpath('../utils/deep_learning');
 
 rng(8);
 
-X_ppg = waves_augmented.PPG_Radial; % [N x T] - augmented data only
-X_area = waves_augmented.A_Radial; % [N x T] - augmented data only
-y = PWV_cf_augmented(:);
+% X_ppg = waves_augmented.PPG_Radial; % [N x T] - augmented data 
+% X_area = waves_augmented.A_Radial; % [N x T] - augmented data 
+% y = PWV_cf_augmented(:);
+
+X_ppg = waves.PPG_Radial; % [N x T] - clean data 
+X_area = waves.A_Radial; % [N x T] - clean data 
+y = PWV_cf(:);
 
 fprintf('\n=== Part 9: Deep Learning with Augmented Data ===\n');
 fprintf('Training with %d subjects (augmented data only)\n', length(y));
@@ -49,8 +53,7 @@ opts = trainingOptions('adam', ...
     'Verbose', true, ...
     'Plots', 'training-progress', ...
     'ValidationData', {seqData(valIdx), y(valIdx)}, ...
-    'ValidationFrequency', 20, ...
-    'ValidationPatience', 15);
+    'ValidationFrequency', 20);
 
 % CNN Model
 fprintf('\n--- Training CNN Model ---\n');
@@ -153,7 +156,7 @@ metrics.GRU.training_time = gru_time;
 test_data.seqData = seqData(testIdx);
 test_data.ytrue = ytrue;
 
-save(fullfile(models_dir, 'part9_cnn_gru_models.mat'), 'net_cnn', 'net_gru', 'best_model', 'best_net', 'metrics', 'test_data');
+save(fullfile(models_dir, 'part9_cnn_gru_models_clean.mat'), 'net_cnn', 'net_gru', 'best_model', 'best_net', 'metrics', 'test_data');
 
 fprintf('Part 9: Deep learning completed\n');
 fprintf('Run part10_model_interpretability() for interpretability analysis\n');

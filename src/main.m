@@ -31,7 +31,7 @@ part6_signal_processing(waves, fs);
 part8_classical_ml(waves_augmented, PWV_cf_augmented, fs);
 
 %% Part 9: Deep Learning
-part9_deep_learning(waves_augmented, PWV_cf_augmented);
+part9_deep_learning(waves, PWV_cf, waves_augmented, PWV_cf_augmented);
 
 %% Part 10: Interpretability for models from part 9 
 part10_model_interpretability()
