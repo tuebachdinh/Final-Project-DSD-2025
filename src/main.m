@@ -3,7 +3,7 @@
 % All 9 parts organized into separate modules
 
 clear; clc; close all;
-
+addpath('../utils/others');
 fprintf('=== PWDB Complete Analysis Pipeline ===\n\n');
 
 %% Part 1: Data Preparation and Wave Extraction
@@ -47,7 +47,7 @@ part12_transfer_eval(waves, PWV_cf, 'area',  fs);
 % Output: == Transfer Eval on CLEAN == R^2 = 0.9391 | MAE = 0.3008 m/s | RMSE = 0.4531 m/s
 
 %% Check parameters
-part9_count_params('../models/part9_models_clean_both.mat');
+count_params('../models/part9_models_clean_both.mat');
 
 %% Make stack plot
 make_stacked_plots('../tables/part9_table_clean_9x4.csv','../tables/part9_table_augmented_9x4.csv')
