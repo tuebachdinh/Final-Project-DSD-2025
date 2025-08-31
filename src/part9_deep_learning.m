@@ -31,7 +31,7 @@ T = size(X_ppg,2);
 
 % ---------- Choose input channels ----------
 % options: 'both' (default), 'ppg', or 'area'
-which_channels = 'both';  % <-- keep your current setting
+which_channels = 'area';  % <-- keep your current setting
 
 switch lower(which_channels)
     case 'both', nCh = 2; chan_tag = 'both';
@@ -170,7 +170,7 @@ end
 % ~65k parameters total (close to CNN/GRU budget).
 % =======================================================
 fprintf('\n--- Training TCN Model ---\n');
-lgraph_tcn = create_tcn_lgraph(nCh, 59);  % F=64
+lgraph_tcn = create_tcn_lgraph(nCh, 55);  % F=64
 tic;
 net_tcn = trainNetwork(seqData(trainIdx), y(trainIdx), lgraph_tcn, opts);
 tcn_time = toc;
@@ -222,7 +222,7 @@ for k = 1:nPlot
     xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
     title(ttl);
 end
-save_figure(sprintf('comparison_%s_%s_with_TCN', data_tag, lower(chan_tag)), 9);
+save_figure(sprintf('comparison_%s_%s', data_tag, lower(chan_tag)), 9);
 
 % ------------------ SAVE ------------------
 metrics = struct();

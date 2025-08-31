@@ -17,7 +17,7 @@ end
 models_dir = fullfile(current_dir, 'models');
 
 % Load trained models and test data
-model_file = fullfile(models_dir, 'part9_models_augmented_both_with_TCN.mat');
+model_file = fullfile(models_dir, 'part9_models_augmented_both.mat');
 if ~exist(model_file, 'file')
     error('Models not found. Run part9_deep_learning() first.');
 end

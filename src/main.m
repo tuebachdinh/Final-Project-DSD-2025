@@ -38,11 +38,16 @@ part10_model_interpretability()
 
 fprintf('\n=== Complete Analysis Pipeline Finished ===\n');
 
-%% Part 11: Summerize results and explain
-part11_summarize_metrics()
+%% Part 11: Summerize results and create tables
+part11_summarize_metrics('clean')
 
 %% Part 12: Transfer clean data to augmented model 
-part12_check_best_model('../models/part9_models_augmented_both.mat', waves, PWV_cf, 'both',  fs);
+part12_transfer_eval(waves, PWV_cf, 'area',  fs);
 
 % Output: == Transfer Eval on CLEAN == R^2 = 0.9391 | MAE = 0.3008 m/s | RMSE = 0.4531 m/s
 
+%% Check parameters
+part9_count_params('../models/part9_models_clean_both.mat');
+
+%% Make stack plot
+make_stacked_plots('../models/part9_table_clean_9x4.csv','../models/part9_table_augmented_9x4.csv')
