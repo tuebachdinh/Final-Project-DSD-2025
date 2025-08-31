@@ -31,10 +31,10 @@ perturbation_importance = perturbation_analysis(net, data_subset, y_pred);
 
 % Visualize results
 visualize_importance(occlusion_importance, perturbation_importance, model_type);
-save_figure(sprintf('interpretability_%s', lower(model_type)), 9);
+save_figure(sprintf('interpretability_augmented_%s', lower(model_type)), 10);
 
 % Save results
-save(sprintf('interpretability_%s.mat', lower(model_type)), 'perturbation_importance', ...
+save(sprintf('interpretability_augmented_%s.mat', lower(model_type)), 'perturbation_importance', ...
 'occlusion_importance'); % perturbation_importance commented out
 
 end
