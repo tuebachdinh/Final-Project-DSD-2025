@@ -50,4 +50,4 @@ part12_transfer_eval(waves, PWV_cf, 'area',  fs);
 part9_count_params('../models/part9_models_clean_both.mat');
 
 %% Make stack plot
-make_stacked_plots('../models/part9_table_clean_9x4.csv','../models/part9_table_augmented_9x4.csv')
+make_stacked_plots('../tables/part9_table_clean_9x4.csv','../tables/part9_table_augmented_9x4.csv')
