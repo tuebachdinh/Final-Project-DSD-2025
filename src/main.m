@@ -38,11 +38,11 @@ part10_model_interpretability()
 
 fprintf('\n=== Complete Analysis Pipeline Finished ===\n');
 
-%% Part 11: Summerize results and create tables
-part11_summarize_metrics('clean')
+%% Summerize results and create tables
+summarize_metrics_create_table('clean')
 
-%% Part 12: Transfer clean data to augmented model 
-part12_transfer_eval(waves, PWV_cf, 'area',  fs);
+%% Part 11: Transfer clean data to augmented model -> generalized effects
+part11_transfer_eval(waves, PWV_cf, 'area',  fs);
 
 % Output: == Transfer Eval on CLEAN == R^2 = 0.9391 | MAE = 0.3008 m/s | RMSE = 0.4531 m/s
 

@@ -1,4 +1,4 @@
-function part12_transfer_eval(waves, PWV_cf, which_channels, fs)
+function part11_transfer_eval(waves, PWV_cf, which_channels, fs)
 % Evaluate a saved Part 9 model (e.g., augmented-trained) on:
 %   (A) CLEAN synthetic data
 %   (B) Optionally a freshly-augmented copy of the same data (toggle below)
