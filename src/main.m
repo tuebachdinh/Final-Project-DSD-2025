@@ -42,10 +42,9 @@ fprintf('\n=== Complete Analysis Pipeline Finished ===\n');
 summarize_metrics_create_table('clean')
 
 %% Part 11: Transfer clean data to augmented model -> generalized effects
-part11_transfer_eval(waves, PWV_cf, 'area',  fs);
+part11_transfer_eval(waves, PWV_cf, 'both',  fs);
 
-% Output: == Transfer Eval on CLEAN == R^2 = 0.9391 | MAE = 0.3008 m/s | RMSE = 0.4531 m/s
-
+% Output: The results are currently summarized into tables folder
 %% Check parameters
 count_params('../models/part9_models_clean_both.mat');
 

@@ -16,9 +16,9 @@ function part11_transfer_eval(waves, PWV_cf, which_channels, fs)
     assert(isfield(waves,'PPG_Radial') && isfield(waves,'A_Radial'), 'waves must have PPG_Radial and A_Radial');
 
     % ------------ Load model ------------
-    S = load(fullfile('..','models','part9_models_augmented_Area_with_TCN.mat'));
+    S = load(fullfile('..','models','part9_models_augmented_both.mat'));
 
-    net = S.net_gru;
+    net = S.net_cnn;
     %if isfield(S,'best_model'), fprintf('Loaded best_model: %s\n', string(S.best_model)); end
 
     % ------------ Build CLEAN seqData ------------
