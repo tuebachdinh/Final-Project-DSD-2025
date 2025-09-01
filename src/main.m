@@ -4,6 +4,8 @@
 
 clear; clc; close all;
 addpath('../utils/others');
+addpath('../utils/deep_learning');
+
 fprintf('=== PWDB Complete Analysis Pipeline ===\n\n');
 
 %% Part 1: Data Preparation and Wave Extraction
@@ -50,3 +52,12 @@ count_params('../models/part9_models_clean_both.mat');
 
 %% Make stack plot
 make_stacked_plots('../tables/part9_table_clean_9x4.csv','../tables/part9_table_augmented_9x4.csv')
+
+%% Overlay importance on sample subject
+addpath('../utils/deep_learning');
+sample_idx = 2675;                    % pick any subject row (1..3837)
+plot_importance_overlay( ...
+    'interpretability_gru.mat', ...
+    waves, ...
+    sample_idx, ...
+    'gru');
