@@ -61,7 +61,7 @@ save_figure('ppg_waveform_regression', 5);
 
 % Example visualization
 site = 'Radial';
-subject_id = 6;
+subject_id = 2695;
 figure('Position',[200 200 900 500]);
 wave_types = {'P', 'U', 'A', 'PPG'};
 for i = 1:length(wave_types)

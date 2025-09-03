@@ -19,21 +19,22 @@ fprintf('Clean data: %d subjects, %d time points\n', N_aug, T_aug);
 fprintf('\n=== Applying Real-World Augmentations ===\n');
 
 % PPG Augmentations
+% Computes per-subject signal power and injects Gaussian noise for SNR≈25 dB
 X_ppg_aug = X_ppg_clean;
 sig_power = mean(X_ppg_aug.^2, 2);
 noise_power = sig_power ./ (10.^(25/10));
 noise = sqrt(noise_power) .* randn(size(X_ppg_aug));
 X_ppg_aug = X_ppg_aug + noise;
 
-% Baseline drift (5%)
+% Baseline drift (5% amplitude)
 t_drift = linspace(0, 1, T_aug);
 for i = 1:N_aug
-    drift_freq = 0.1 + 0.3*rand();
+    drift_freq = 0.1 + 0.3*rand(); %random frequency between 0.1Hz and 0.4Hz
     drift = 0.05 * sin(2*pi*drift_freq*t_drift + 2*pi*rand());
     X_ppg_aug(i,:) = X_ppg_aug(i,:) + drift;
 end
 
-% Motion artifacts (30% probability)
+% Motion artifacts (30% probability) (add a short spike segment)
 for i = 1:N_aug
     if rand() < 0.3
         spike_start = randi([1, T_aug-20]);

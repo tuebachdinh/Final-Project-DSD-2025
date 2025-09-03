@@ -78,7 +78,7 @@ end
 % ---- Normalize and combine importance ----
 occl_n = normalize_safe(occl_up, 2, 'range');  % [0,1] across time per channel
 pert_n = normalize_safe(pert,   2, 'range');   % [0,1]
-comb   = 0.5*occl_n + 0.5*pert_n;              % simple average; adjust weights if desired
+comb   = 0.2*occl_n + 0.8*pert_n;              % simple average; adjust weights if desired
 
 % ---- Plot helper ----
 plot_one_channel(t, ppg,  comb(1,:), 'PPG',  'a.u.', sprintf('ppg_importance_%s_%d',  model_tag, sample_idx));

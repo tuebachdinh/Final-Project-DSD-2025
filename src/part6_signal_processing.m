@@ -4,7 +4,7 @@ function part6_signal_processing(waves, fs)
 addpath('../utils/others');
 addpath('../utils/signal_processing');
 
-subject_idx = 1;
+subject_idx = 2695;
 signal = waves.PPG_Radial(subject_idx, :);
 
 S = struct();

@@ -20,7 +20,7 @@ part3_ptt_analysis(data, plaus_idx, age);
 %% Part 4: Feature-based Regression
 part4_feature_regression(data, plaus_idx, PWV_cf, haemods);
 
-%% Part 5: ML with Waveforms
+%% Part 5: ML with Waveforms and example waveforms of 1 subject
 part5_ml_waveforms(waves, PWV_cf, age, fs);
 
 %% Part 6: Signal Processing
@@ -48,16 +48,23 @@ part11_transfer_eval(waves, PWV_cf, 'both',  fs);
 
 % Output: The results are currently summarized into tables folder
 %% Check parameters
-count_params('../models/part9_models_clean_both.mat');
+count_params('../models/part9_models_clean_both_with_TCN.mat');
 
 %% Make stack plot
 make_stacked_plots('../tables/part9_table_clean_9x4.csv','../tables/part9_table_augmented_9x4.csv')
 
 %% Overlay importance on sample subject
 addpath('../utils/deep_learning');
-sample_idx = 2675;                    % pick any subject row (1..3837)
-plot_importance_overlay( ...
-    'interpretability_gru.mat', ...
-    waves, ...
-    sample_idx, ...
-    'gru');
+sample_idx = 2675; % pick any subject row (1..3837)
+plot_importance_overlay('interpretability_gru.mat', waves, sample_idx, 'gru');
+
+%% Plot model architecture 
+S = load(fullfile('..','models', 'part9_models_augmented_both.mat'));
+analyzeNetwork(S.net_cnn);
+analyzeNetwork(S.net_gru);
+analyzeNetwork(S.net_tcn);
+
+%More GUI way, drag-drop
+% deepNetworkDesigner(S.net_tcn) 
+% deepNetworkDesigner(S.net_tcn) 
+% deepNetworkDesigner(S.net_tcn)  

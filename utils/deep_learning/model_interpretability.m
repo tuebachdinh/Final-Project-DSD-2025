@@ -2,10 +2,10 @@ function model_interpretability(net, seqData, y_true, model_type)
 %MODEL_INTERPRETABILITY Analyze which parts of input are most important
 %
 % Inputs:
-% net - trained network (CNN or GRU)
+% net - trained network 
 % seqData - cell array of input sequences [2 x T] (PPG, Area)
 % y_true - true PWV values
-% model_type - 'CNN' or 'GRU' or 'features'
+% model_type - 'CNN' or 'GRU' or 'TCN'
 
 addpath('../utils/others');
 
@@ -24,10 +24,9 @@ y_pred = predict(net, data_subset);
 fprintf('Running Occlusion Analysis...\n');
 occlusion_importance = occlusion_analysis(net, data_subset, y_pred);
 
-% 2. Perturbation Analysis (SHAP-like) - COMMENTED OUT (takes 3+ hours)
+% 2. Perturbation Analysis (SHAP-like) 
 fprintf('Running Perturbation Analysis...\n');
 perturbation_importance = perturbation_analysis(net, data_subset, y_pred);
-%perturbation_importance = zeros(2, size(data_subset{1}, 2)); % Dummy data for visualization
 
 % Visualize results
 visualize_importance(occlusion_importance, perturbation_importance, model_type);
@@ -38,6 +37,7 @@ save(sprintf('interpretability_augmented_%s.mat', lower(model_type)), 'perturbat
 'occlusion_importance'); % perturbation_importance commented out
 
 end
+
 
 function importance = occlusion_analysis(net, seqData, y_baseline)
 %OCCLUSION_ANALYSIS Systematically mask parts of input and measure impact

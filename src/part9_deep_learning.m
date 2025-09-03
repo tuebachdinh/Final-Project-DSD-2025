@@ -7,16 +7,16 @@ rng(8);
 
 % ------------------ DATA SELECTION ------------------
 % Current setting: augmented data (as in your code)
-X_ppg  = waves_augmented.PPG_Radial;   % [N x T]
-X_area = waves_augmented.A_Radial;     % [N x T]
-y      = PWV_cf_augmented(:);
-data_tag = 'augmented';
+% X_ppg  = waves_augmented.PPG_Radial;   % [N x T]
+% X_area = waves_augmented.A_Radial;     % [N x T]
+% y      = PWV_cf_augmented(:);
+% data_tag = 'augmented';
 
 % If you switch to clean data later, uncomment below and set data_tag='clean'
-% X_ppg  = waves.PPG_Radial;
-% X_area = waves.A_Radial;
-% y      = PWV_cf(:);
-% data_tag = 'clean';
+X_ppg  = waves.PPG_Radial;
+X_area = waves.A_Radial;
+y      = PWV_cf(:);
+data_tag = 'clean';
 
 fprintf('\n=== Part 9: Deep Learning (%s data) ===\n', data_tag);
 fprintf('Total subjects: %d\n', numel(y));
@@ -31,7 +31,7 @@ T = size(X_ppg,2);
 
 % ---------- Choose input channels ----------
 % options: 'both' (default), 'ppg', or 'area'
-which_channels = 'area';  % <-- keep your current setting
+which_channels = 'area';  
 
 switch lower(which_channels)
     case 'both', nCh = 2; chan_tag = 'both';
@@ -129,6 +129,7 @@ if exist('net_cnn','var')
     R2_cnn    = 1 - sum(resid_cnn.^2) / sum((ytrue - mean(ytrue)).^2);
     MAE_cnn   = mean(abs(resid_cnn));
     RMSE_cnn  = sqrt(mean(resid_cnn.^2));
+    cnn_time  = S_pre.metrics.CNN.training_time;
 end
 
 % =======================================================
@@ -162,6 +163,7 @@ if exist('net_gru','var')
     R2_gru    = 1 - sum(resid_gru.^2) / sum((ytrue - mean(ytrue)).^2);
     MAE_gru   = mean(abs(resid_gru));
     RMSE_gru  = sqrt(mean(resid_gru.^2));
+    gru_time  = S_pre.metrics.GRU.training_time;
 end
 
 % =======================================================
@@ -289,6 +291,7 @@ b2_skip  = convolution1dLayer(1, F,'Padding','same','Name','b2_skip');
 b2_add   = additionLayer(2,'Name','b2_add');
 b2_out   = reluLayer('Name','b2_out');
 
+% Receptive field = 1 + (5-1)(1+2+4+8) = 61 time steps 
 % Head
 gap   = globalAveragePooling1dLayer('Name','gap');
 fc1   = fullyConnectedLayer(48,'Name','fc1');
