@@ -56,7 +56,7 @@ make_stacked_plots('../tables/part9_table_clean_9x4.csv','../tables/part9_table_
 %% Overlay importance on sample subject
 addpath('../utils/deep_learning');
 sample_idx = 2675; % pick any subject row (1..3837)
-plot_importance_overlay('interpretability_gru.mat', waves, sample_idx, 'gru');
+plot_importance_overlay('interpretability_augmented_tcn.mat', waves, sample_idx, 'tcn');
 
 %% Plot model architecture 
 S = load(fullfile('..','models', 'part9_models_augmented_both.mat'));
