@@ -47,8 +47,6 @@ Final-Project-DSD-2025/
 - **Parts 7-9**: Data augmentation, deep learning (CNN/GRU/TCN)
 - **Parts 10-12**: Model interpretability, cross-validation, evaluation
 
-**Key Results:** TCN with PPG+Area input achieves R² ≈ 0.70-0.75. See `docs/` for detailed findings.
-
 ---
 
 ## How to Use
