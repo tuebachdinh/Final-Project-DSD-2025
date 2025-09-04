@@ -232,7 +232,7 @@ part9_deep_learning(waves, PWV_cf, waves_augmented, PWV_cf_augmented, 'clean', '
 - **Channel Flexibility**: 1-channel (PPG or Area) or 2-channel (both) input
 - **Robust Training**: Always validates on clean data regardless of training data
 
-**Architecture Details**:
+**Architecture Detail (~50k parameters)**:
 - **CNN**: Conv1D(10,48) → Conv1D(10,96) → GlobalAvgPool → FC(48) → FC(1)
 - **GRU**: GRU(96,seq) → Dropout(0.15) → GRU(48,last) → FC(48) → FC(1)  
 - **TCN**: 2 residual blocks with dilations (1,2,4,8) → GAP → FC(48) → FC(1)
