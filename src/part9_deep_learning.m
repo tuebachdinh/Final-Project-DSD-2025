@@ -1,67 +1,100 @@
-function part9_deep_learning(waves, PWV_cf, waves_augmented, PWV_cf_augmented)
-%PART9_DEEP_LEARNING Compare CNN vs GRU vs TCN (with ability to reuse CNN/GRU)
+function part9_deep_learning(waves, PWV_cf, waves_augmented, PWV_cf_augmented, train_data_tag, which_channels)
+%PART9_DEEP_LEARNING Compare CNN vs GRU vs TCN
+% Train on 'clean' or 'augmented' (train_data_tag), but ALWAYS validate & test on CLEAN.
+% which_channels: 'both' | 'ppg' | 'area'
+
 addpath('../utils/others');
 addpath('../utils/deep_learning');
-
 rng(8);
 
-% ------------------ DATA SELECTION ------------------
-% Current setting: augmented data (as in your code)
-% X_ppg  = waves_augmented.PPG_Radial;   % [N x T]
-% X_area = waves_augmented.A_Radial;     % [N x T]
-% y      = PWV_cf_augmented(:);
-% data_tag = 'augmented';
+% ---------- defaults ----------
+if nargin < 5 || isempty(train_data_tag), train_data_tag = 'clean'; end
+if nargin < 6 || isempty(which_channels), which_channels = 'both'; end
+assert(ismember(lower(train_data_tag), {'clean','augmented'}), 'train_data_tag must be clean|augmented');
+assert(ismember(lower(which_channels), {'both','ppg','area'}), 'which_channels must be both|ppg|area');
 
-% If you switch to clean data later, uncomment below and set data_tag='clean'
-X_ppg  = waves.PPG_Radial;
-X_area = waves.A_Radial;
-y      = PWV_cf(:);
-data_tag = 'clean';
+fprintf('\n=== Part 9: Deep Learning (train=%s | val/test=clean) ===\n', lower(train_data_tag));
 
-fprintf('\n=== Part 9: Deep Learning (%s data) ===\n', data_tag);
-fprintf('Total subjects: %d\n', numel(y));
-
-good = all(isfinite(X_ppg),2) & all(isfinite(X_area),2) & isfinite(y);
-X_ppg  = X_ppg(good,:); 
-X_area = X_area(good,:);
-y      = y(good);
-
-N = size(X_ppg,1);
-T = size(X_ppg,2);
-
-% ---------- Choose input channels ----------
-% options: 'both' (default), 'ppg', or 'area'
-which_channels = 'area';  
-
+% ---------- channel setup ----------
 switch lower(which_channels)
     case 'both', nCh = 2; chan_tag = 'both';
     case 'ppg',  nCh = 1; chan_tag = 'PPG';
     case 'area', nCh = 1; chan_tag = 'Area';
-    otherwise, error('which_channels must be ''both'', ''ppg'', or ''area''');
 end
 
-% (recommended) per-sequence z-norm both channels
-X_ppg_z  = (X_ppg  - mean(X_ppg,2))  ./ max(std(X_ppg,[],2),  eps);
-X_area_z = (X_area - mean(X_area,2)) ./ max(std(X_area,[],2), eps);
+% ---------- CLEAN dataset (always used for validation & test) ----------
+Xc_ppg  = waves.PPG_Radial;
+Xc_area = waves.A_Radial;
+yc      = PWV_cf(:);
 
-% Build seqData cell
-seqData = cell(N,1);
-for i = 1:N
+good_c  = all(isfinite(Xc_ppg),2) & all(isfinite(Xc_area),2) & isfinite(yc);
+Xc_ppg  = Xc_ppg(good_c,:); 
+Xc_area = Xc_area(good_c,:);
+yc      = yc(good_c);
+
+% per-sequence z-norm
+Xc_ppg_z  = (Xc_ppg  - mean(Xc_ppg,2))  ./ max(std(Xc_ppg,[],2),  eps);
+Xc_area_z = (Xc_area - mean(Xc_area,2)) ./ max(std(Xc_area,[],2), eps);
+
+Nc = size(Xc_ppg_z,1);
+Tc = size(Xc_ppg_z,2);
+
+seqClean = cell(Nc,1);
+for i = 1:Nc
     switch lower(which_channels)
-        case 'both', seqData{i} = [X_ppg_z(i,:); X_area_z(i,:)];
-        case 'ppg',  seqData{i} = X_ppg_z(i,:);
-        case 'area', seqData{i} = X_area_z(i,:);
+        case 'both', seqClean{i} = [Xc_ppg_z(i,:); Xc_area_z(i,:)];
+        case 'ppg',  seqClean{i} = Xc_ppg_z(i,:);
+        case 'area', seqClean{i} = Xc_area_z(i,:);
     end
 end
 
-% ------------------ SPLIT ------------------
-idx = randperm(N);
-nTrain = round(0.6*N);
-nVal   = round(0.2*N);
+% ---------- AUGMENTED dataset (used for training iff train_data_tag='augmented') ----------
+Xa_ppg  = waves_augmented.PPG_Radial;
+Xa_area = waves_augmented.A_Radial;
+ya      = PWV_cf_augmented(:);
 
-valIdx   = idx(1:nVal);
-trainIdx = idx(nVal+1:nVal+nTrain);
-testIdx  = idx(nVal+nTrain+1:end);
+if ~isempty(Xa_ppg) && ~isempty(Xa_area) && ~isempty(ya)
+    good_a  = all(isfinite(Xa_ppg),2) & all(isfinite(Xa_area),2) & isfinite(ya);
+    Xa_ppg  = Xa_ppg(good_a,:); 
+    Xa_area = Xa_area(good_a,:);
+    ya      = ya(good_a);
+
+    Xa_ppg_z  = (Xa_ppg  - mean(Xa_ppg,2))  ./ max(std(Xa_ppg,[],2),  eps);
+    Xa_area_z = (Xa_area - mean(Xa_area,2)) ./ max(std(Xa_area,[],2), eps);
+
+    Na = size(Xa_ppg_z,1);
+    seqAug = cell(Na,1);
+    for i = 1:Na
+        switch lower(which_channels)
+            case 'both', seqAug{i} = [Xa_ppg_z(i,:); Xa_area_z(i,:)];
+            case 'ppg',  seqAug{i} = Xa_ppg_z(i,:);
+            case 'area', seqAug{i} = Xa_area_z(i,:);
+        end
+    end
+else
+    Na = 0; seqAug = {}; ya = [];
+end
+
+% ------------------ SPLITS (on CLEAN only) ------------------
+idxc    = randperm(Nc);
+nTrainC = round(0.6*Nc);
+nValC   = round(0.2*Nc);
+valIdx  = idxc(1:nValC);
+trainIdxC = idxc(nValC+1:nValC+nTrainC);
+testIdx = idxc(nValC+nTrainC+1:end);
+
+% ------------------ TRAIN SET CHOICE ------------------
+if strcmpi(train_data_tag,'augmented')
+    if Na==0, error('Augmented data requested for training, but none provided.'); end
+    seqTrain = seqAug;
+    yTrain   = ya;
+else
+    seqTrain = seqClean(trainIdxC);
+    yTrain   = yc(trainIdxC);
+end
+seqVal = seqClean(valIdx);   yVal = yc(valIdx);     % always clean
+ytrue  = yc(testIdx);        % always clean test
+T = Tc; % common length
 
 % ------------------ TRAINING OPTIONS ------------------
 opts = trainingOptions('adam', ...
@@ -71,7 +104,7 @@ opts = trainingOptions('adam', ...
     'Shuffle', 'every-epoch', ...
     'Verbose', true, ...
     'Plots', 'training-progress', ...
-    'ValidationData', {seqData(valIdx), y(valIdx)}, ...
+    'ValidationData', {seqVal, yVal}, ...
     'ValidationFrequency', 20);
 
 % ------------------ PROJECT ROOT / MODELS DIR ------------------
@@ -85,11 +118,12 @@ models_dir = fullfile(current_dir, 'models');
 if ~exist(models_dir, 'dir'), mkdir(models_dir); end
 
 % ------------------ CONTROL: reuse CNN/GRU ------------------
-TRAIN_CNN = false;   % <- do NOT retrain CNN
-TRAIN_GRU = false;   % <- do NOT retrain GRU
-TRAIN_TCN = true;    % <- train TCN
+TRAIN_CNN = true;
+TRAIN_GRU = true;
+TRAIN_TCN = true;
 
-pretrained_file = fullfile(models_dir, sprintf('part9_models_%s_%s.mat', data_tag, chan_tag));
+tag_train = lower(train_data_tag);
+pretrained_file = fullfile(models_dir, sprintf('part9_models_%s_%s.mat', tag_train, chan_tag));
 if exist(pretrained_file,'file')
     S_pre = load(pretrained_file);
 else
@@ -117,19 +151,20 @@ else
         fullyConnectedLayer(1)
         regressionLayer];
     tic;
-    net_cnn = trainNetwork(seqData(trainIdx), y(trainIdx), layers_cnn, opts);
+    net_cnn = trainNetwork(seqTrain, yTrain, layers_cnn, opts);
     cnn_time = toc;
 end
 
-% Evaluate CNN if available
 if exist('net_cnn','var')
-    ytrue = y(testIdx);
-    yp_cnn   = predict(net_cnn, seqData(testIdx));
+    yp_cnn   = predict(net_cnn, seqClean(testIdx));
     resid_cnn = ytrue - yp_cnn;
     R2_cnn    = 1 - sum(resid_cnn.^2) / sum((ytrue - mean(ytrue)).^2);
     MAE_cnn   = mean(abs(resid_cnn));
     RMSE_cnn  = sqrt(mean(resid_cnn.^2));
-    cnn_time  = S_pre.metrics.CNN.training_time;
+    if exist('S_pre','var') && isfield(S_pre,'metrics') && isfield(S_pre.metrics,'CNN') ...
+            && isfield(S_pre.metrics.CNN,'training_time') && ~TRAIN_CNN
+        cnn_time = S_pre.metrics.CNN.training_time;
+    end
 end
 
 % =======================================================
@@ -151,42 +186,40 @@ else
         fullyConnectedLayer(1)
         regressionLayer];
     tic;
-    net_gru = trainNetwork(seqData(trainIdx), y(trainIdx), layers_gru, opts);
+    net_gru = trainNetwork(seqTrain, yTrain, layers_gru, opts);
     gru_time = toc;
 end
 
-% Evaluate GRU if available
 if exist('net_gru','var')
-    ytrue = y(testIdx);
-    yp_gru   = predict(net_gru, seqData(testIdx));
+    yp_gru   = predict(net_gru, seqClean(testIdx));
     resid_gru = ytrue - yp_gru;
     R2_gru    = 1 - sum(resid_gru.^2) / sum((ytrue - mean(ytrue)).^2);
     MAE_gru   = mean(abs(resid_gru));
     RMSE_gru  = sqrt(mean(resid_gru.^2));
-    gru_time  = S_pre.metrics.GRU.training_time;
+    if exist('S_pre','var') && isfield(S_pre,'metrics') && isfield(S_pre.metrics,'GRU') ...
+            && isfield(S_pre.metrics.GRU,'training_time') && ~TRAIN_GRU
+        gru_time = S_pre.metrics.GRU.training_time;
+    end
 end
 
 % =======================================================
 %                         TCN
-% 2 residual blocks with dilations (1,2) and (4,8), F=64 filters.
-% ~65k parameters total (close to CNN/GRU budget).
 % =======================================================
 fprintf('\n--- Training TCN Model ---\n');
-lgraph_tcn = create_tcn_lgraph(nCh, 55);  % F=64
+lgraph_tcn = create_tcn_lgraph(nCh, 55);
 tic;
-net_tcn = trainNetwork(seqData(trainIdx), y(trainIdx), lgraph_tcn, opts);
+net_tcn = trainNetwork(seqTrain, yTrain, lgraph_tcn, opts);
 tcn_time = toc;
 
-% Evaluate TCN
-ytrue  = y(testIdx);
-yp_tcn = predict(net_tcn, seqData(testIdx));
+% Evaluate TCN (on CLEAN test)
+yp_tcn = predict(net_tcn, seqClean(testIdx));
 resid_tcn = ytrue - yp_tcn;
 R2_tcn   = 1 - sum(resid_tcn.^2) / sum((ytrue - mean(ytrue)).^2);
 MAE_tcn  = mean(abs(resid_tcn));
 RMSE_tcn = sqrt(mean(resid_tcn.^2));
 
 % ------------------ PRINT RESULTS ------------------
-fprintf('\n=== Part 9 Results (%s | %s) ===\n', data_tag, chan_tag);
+fprintf('\n=== Part 9 Results (train=%s | val/test=clean | %s) ===\n', tag_train, chan_tag);
 if exist('net_cnn','var')
     fprintf('CNN:  R^2 = %.3f | MAE = %.3f | RMSE = %.3f | time = %.1fs\n', R2_cnn, MAE_cnn, RMSE_cnn, cnn_time);
 end
@@ -195,51 +228,54 @@ if exist('net_gru','var')
 end
 fprintf('TCN:  R^2 = %.3f | MAE = %.3f | RMSE = %.3f | time = %.1fs\n', R2_tcn, MAE_tcn, RMSE_tcn, tcn_time);
 
-% Decide best among the models available
-R2s = [-Inf, -Inf, R2_tcn]; names = {'CNN','GRU','TCN'}; nets = {[],[],net_tcn}; yps = {[],[],yp_tcn};
-if exist('net_cnn','var'), R2s(1)=R2_cnn; nets{1}=net_cnn; yps{1}=predict(net_cnn,seqData(testIdx)); end
-if exist('net_gru','var'), R2s(2)=R2_gru; nets{2}=net_gru; yps{2}=predict(net_gru,seqData(testIdx)); end
+% Decide best
+R2s = [-Inf, -Inf, R2_tcn]; names = {'CNN','GRU','TCN'}; nets = {[],[],net_tcn};
+if exist('net_cnn','var'), R2s(1)=R2_cnn; nets{1}=net_cnn; end
+if exist('net_gru','var'), R2s(2)=R2_gru; nets{2}=net_gru; end
 [~,best_idx] = max(R2s);
 best_model = names{best_idx};
 best_net   = nets{best_idx};
-best_yp    = yps{best_idx};
-
 fprintf('=> Best: %s\n', best_model);
 
-% ------------------ PLOTS ------------------
-% Plot available models side-by-side
-avail = find(~isinf(R2s));
-nPlot = numel(avail);
+% ------------------ PLOTS (CLEAN test only) ------------------
+nPlot = sum(~isinf(R2s));
 figure;
-for k = 1:nPlot
-    m = avail(k);
-    subplot(1,nPlot,k);
-    switch m
-        case 1, yp = predict(net_cnn, seqData(testIdx)); ttl = sprintf('CNN: R^2=%.3f', R2_cnn);
-        case 2, yp = predict(net_gru, seqData(testIdx)); ttl = sprintf('GRU: R^2=%.3f', R2_gru);
-        case 3, yp = yp_tcn;                              ttl = sprintf('TCN: R^2=%.3f', R2_tcn);
-    end
+kp = 0;
+if exist('net_cnn','var')
+    kp=kp+1; subplot(1,nPlot,kp);
+    yp = predict(net_cnn, seqClean(testIdx)); ttl = sprintf('CNN: R^2=%.3f', R2_cnn);
     scatter(ytrue, yp, 30, 'filled'); grid on; hold on;
     plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.2);
-    xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)');
-    title(ttl);
+    xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)'); title(ttl);
 end
-save_figure(sprintf('comparison_%s_%s', data_tag, lower(chan_tag)), 9);
+if exist('net_gru','var')
+    kp=kp+1; subplot(1,nPlot,kp);
+    yp = predict(net_gru, seqClean(testIdx)); ttl = sprintf('GRU: R^2=%.3f', R2_gru);
+    scatter(ytrue, yp, 30, 'filled'); grid on; hold on;
+    plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.2);
+    xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)'); title(ttl);
+end
+kp=kp+1; subplot(1,nPlot,kp);
+yp = yp_tcn; ttl = sprintf('TCN: R^2=%.3f', R2_tcn);
+scatter(ytrue, yp, 30, 'filled'); grid on; hold on;
+plot([min(ytrue) max(ytrue)], [min(ytrue) max(ytrue)], 'k--', 'LineWidth', 1.2);
+xlabel('True PWV_{cf} (m/s)'); ylabel('Predicted PWV_{cf} (m/s)'); title(ttl);
+save_figure(sprintf('comparison_%s_%s', tag_train, lower(chan_tag)), 9);
 
 % ------------------ SAVE ------------------
 metrics = struct();
 if exist('net_cnn','var')
-    metrics.CNN.R2 = R2_cnn; metrics.CNN.MAE = MAE_cnn; metrics.CNN.RMSE = RMSE_cnn; metrics.CNN.training_time = cnn_time;
+    metrics.CNN = struct('R2',R2_cnn,'MAE',MAE_cnn,'RMSE',RMSE_cnn,'training_time',cnn_time);
 end
 if exist('net_gru','var')
-    metrics.GRU.R2 = R2_gru; metrics.GRU.MAE = MAE_gru; metrics.GRU.RMSE = RMSE_gru; metrics.GRU.training_time = gru_time;
+    metrics.GRU = struct('R2',R2_gru,'MAE',MAE_gru,'RMSE',RMSE_gru,'training_time',gru_time);
 end
-metrics.TCN.R2 = R2_tcn; metrics.TCN.MAE = MAE_tcn; metrics.TCN.RMSE = RMSE_tcn; metrics.TCN.training_time = tcn_time;
+metrics.TCN = struct('R2',R2_tcn,'MAE',MAE_tcn,'RMSE',RMSE_tcn,'training_time',tcn_time);
 
-test_data.seqData = seqData(testIdx);
+test_data.seqData = seqClean(testIdx);
 test_data.ytrue   = ytrue;
 
-save_name = fullfile(models_dir, sprintf('part9_models_%s_%s_with_TCN.mat', data_tag, chan_tag));
+save_name = fullfile(models_dir, sprintf('part9_models_%s_%s.mat', tag_train, chan_tag));
 if exist('net_cnn','var') && exist('net_gru','var')
     save(save_name, 'net_cnn', 'net_gru', 'net_tcn', 'best_model', 'best_net', 'metrics', 'test_data');
 elseif exist('net_cnn','var')
@@ -251,7 +287,7 @@ else
 end
 
 fprintf('Saved: %s\n', save_name);
-fprintf('Part 9 with TCN complete.\n');
+fprintf('Part 9 complete.\n');
 
 end
 
@@ -348,4 +384,5 @@ end
 if need
     lgraph = connectLayers(lgraph, src, dst);
 end
+
 end

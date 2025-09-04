@@ -1,4 +1,4 @@
-function part10_model_interpretability()
+function part10_model_interpretability(waves, PWV_cf, file)
 %PART10_MODEL_INTERPRETABILITY Model Interpretability Analysis
 addpath('../utils/others');
 addpath('../utils/deep_learning');
@@ -17,25 +17,36 @@ end
 models_dir = fullfile(current_dir, 'models');
 
 % Load trained models and test data
-model_file = fullfile(models_dir, 'part9_models_augmented_both.mat');
+model_file = fullfile(models_dir, file);
 if ~exist(model_file, 'file')
     error('Models not found. Run part9_deep_learning() first.');
 end
 
-load(model_file, 'net_cnn', 'net_gru', 'net_tcn', 'test_data');
 
-fprintf('Loaded models and test data from Part 9\n');
-fprintf('Test samples: %d\n', length(test_data.seqData));
 
-% Run interpretability analysis
-% fprintf('\n--- Running CNN Interpretability Analysis ---\n');
-% model_interpretability(net_cnn, test_data.seqData, test_data.ytrue, 'CNN');
-% 
-% fprintf('\n--- Running GRU Interpretability Analysis ---\n');
-% model_interpretability(net_gru, test_data.seqData, test_data.ytrue, 'GRU');
+if contains(file, 'augmented')
+    load(model_file, 'net_cnn', 'net_gru', 'net_tcn');
+    % Run interpretability analysis
+    fprintf('\n--- Running CNN Interpretability Analysis ---\n');
+    model_interpretability(net_cnn, waves, PWV_cf, 'augmented_cnn');
+    fprintf('\n--- Running GRU Interpretability Analysis ---\n');
+    model_interpretability(net_gru, waves, PWV_cf, 'augmented_gru');
+    fprintf('\n--- Running TCN Interpretability Analysis ---\n');
+    model_interpretability(net_tcn, waves, PWV_cf, 'augmented_tcn');
+elseif contains(file, 'clean')
+    load(model_file, 'net_cnn', 'net_gru', 'net_tcn');
+    % Run interpretability analysis
+    fprintf('\n--- Running CNN Interpretability Analysis ---\n');
+    model_interpretability(net_cnn, waves, PWV_cf, 'CNN');
+    fprintf('\n--- Running GRU Interpretability Analysis ---\n');
+    model_interpretability(net_gru, waves, PWV_cf, 'GRU');
+    fprintf('\n--- Running TCN Interpretability Analysis ---\n');
+    model_interpretability(net_tcn, waves, PWV_cf, 'TCN');
+else
+    load(model_file, 'net_tcn');
+    model_interpretability(net_tcn, waves, PWV_cf, 'final_tcn');
+end
 
-fprintf('\n--- Running TCN Interpretability Analysis ---\n');
-model_interpretability(net_tcn, test_data.seqData, test_data.ytrue, 'TCN');
 
 
 fprintf('Part 10: Model interpretability completed\n');

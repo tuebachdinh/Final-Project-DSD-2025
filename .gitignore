@@ -1,4 +1,6 @@
-**/*.mat
 resources/
 **/.MATLABDriveTag
-
+**/.DS_Store
+archieved/RADIAL_physio.mat
+archieved/Fictive_database.mat
+data/exported_data/pwdb_data.mat

@@ -66,9 +66,9 @@ function T = summarize_metrics_create_table(data_tag)
     % print + save csv
     fprintf('\n=== Part 9 Metrics Table (%s) ===\n', data_tag);
     disp(T);
-    % out_csv = fullfile(models_dir, sprintf('part9_table_%s_9x4.csv', data_tag));
-    % writetable(T, out_csv);
-    % fprintf('Saved CSV: %s\n', out_csv);
+    out_csv = fullfile(models_dir, sprintf('part9_table_%s_9x4.csv', data_tag));
+    writetable(T, out_csv);
+    fprintf('Saved CSV: %s\n', out_csv);
 end
 
 function v = getf(S, field)
