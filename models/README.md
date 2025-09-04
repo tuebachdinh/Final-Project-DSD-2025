@@ -128,11 +128,3 @@ fprintf('Clean: R² = %.3f ± %.3f\n', ...
     results_summary.summary.clean.R2_std);
 ```
 
-## Performance Summary
-
-Best performing configurations (typical results):
-- **TCN + Both channels**: R² ≈ 0.65-0.75
-- **GRU + Both channels**: R² ≈ 0.60-0.70  
-- **CNN + Both channels**: R² ≈ 0.55-0.65
-
-Training on augmented data generally improves robustness while maintaining similar clean-data performance.

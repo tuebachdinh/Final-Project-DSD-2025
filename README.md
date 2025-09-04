@@ -1,8 +1,8 @@
-# Deep Learning Pipeline for Arterial Stiffness Estimation from Wrist Pulse Signals
+# Comprehensive Analysis Pipeline for Arterial Stiffness Estimation from Wrist Pulse Signals
 
 ## Overview
 
-A comprehensive deep learning pipeline for predicting arterial stiffness from wrist pulse waveforms using data visualization, signal processing, classical machine learning, advanced deep learning pipeline, and model interpretability technique
+A comprehensive pipeline for predicting arterial stiffness from wrist pulse waveforms using data visualization, signal processing, classical machine learning, advanced deep learning pipeline, and model-interpretability techniques.
 
 **Research Team:** Dinh Bach Tue (Student), PhD Researcher Bahmani Nima (Advisor), Professor Stephan Sigg (Supervisor) - Aalto University, Finland
 
