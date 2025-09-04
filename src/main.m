@@ -68,3 +68,9 @@ analyzeNetwork(S.net_tcn);
 % deepNetworkDesigner(S.net_tcn) 
 % deepNetworkDesigner(S.net_tcn) 
 % deepNetworkDesigner(S.net_tcn)  
+
+%% Part 12: 5-fold cross validation on best model (TCN - both)
+% Using both clean and augmented data after seeing the benefits of augmentation
+part12_cross_validation(waves, PWV_cf, waves_augmented, PWV_cf_augmented, 5, 'both')
+
+%% time=854.7s, time=739.5s, time=583.1s, time=563.0s, time=576.4s
