@@ -15,7 +15,8 @@ A comprehensive deep learning pipeline for predicting arterial stiffness from wr
 - **Multi-site measurements** including radial artery (wrist focus)
 - **Demographic diversity**: Ages 25–75 years
 - **Target variable**: Carotid-femoral PWV (cfPWV) for arterial stiffness
-- Download: [https://github.com/peterhcharlton/pwdb](https://github.com/peterhcharlton/pwdb)
+- Download: [https://zenodo.org/records/3275625](https://zenodo.org/records/3275625)
+- Filename : 'pwdb_data.mat' - 701.7 MB
 
 ### 2. HaeMod Virtual Subjects (Willemet et al., 2015) - **Archived**
 - **3,325 virtual subjects** with P, U, A waveforms (**no PPG**)
@@ -53,13 +54,13 @@ Final-Project-DSD-2025/
 ## How to Use
 
 ### Prerequisites
-- MATLAB R2020b or later with Toolbox
+- MATLAB R2025a with Toolbox
    + Signal Processing Toolbox
    + Deep Learning Toolbox
    + Curve Fitting Toolbox
    + Mapping Toolbox
    + Statistics and Machine Learning Toolbox
-- PWDB dataset (download from [GitHub](https://github.com/peterhcharlton/pwdb))
+- PWDB dataset (download `pwdb_data.mat` from [Zenodo](https://zenodo.org/records/3275625))
 
 ### Quick Start
 1. **Setup Data**: Place `pwdb_data.mat` in `data/exported_data/`
@@ -71,7 +72,7 @@ Note: If the current plots or models are not removed, running the script will ov
 
 ### Output Structure
 - **Figures**: `images/part[N]_[description].png`
-- **Models**: `models/part9_cnn_gru_models.mat`
+- **Models**: `models/part9_cnn_gru_models.mat` - example
 - **Analysis**: Interpretability results in `.mat` files
 
 ---
@@ -84,7 +85,7 @@ Note: If the current plots or models are not removed, running the script will ov
 ## Contact
 
 **Primary Contact**: Dinh Bach Tue (tue.dinh@aalto.fi)  
-**Advisor**: PhD Researcher Bahnami Nima
+**Advisor**: PhD Researcher Bahmani Nima
 
 ---
 
