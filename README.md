@@ -35,8 +35,7 @@ Final-Project-DSD-2025/
 ├── images/                  # Generated visualizations
 ├── tables/                  # Performance metrics
 ├── docs/                    # Detailed research reports
-├── archieved/              # Initial work (2015 dataset)
-└── pwdb-master-reference/  # Reference tools
+└── archieved/               # Initial work (2015 dataset)
 ```
 
 ## Workflow
