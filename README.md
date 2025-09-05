@@ -77,6 +77,17 @@ Note: If the current plots or models are not removed, running the script will ov
 
 ---
 
+
+## Future Directions
+This project serves as a baseline for transferring models from synthetic to real wearable device data. Several avenues for future work include:
+- **Multi-sensor integration**: Extend models to fuse PPG, mmWave, and other wrist-based signals for richer arterial stiffness estimation.
+- **Transfer learning & domain adaptation**: Apply fine-tuning and adaptation strategies to bridge the gap between synthetic in silico data and real-world wearable measurements.
+- **Data augmentation studies**: Investigate how different augmentation strategies affect model robustness, particularly in noisy or low-quality signals.
+- **Model interpretability**: Explore the effect of window resolution in occlusion and perturbation analyses to better understand which waveform segments drive predictions.
+- **Architectural exploration**: Benchmark additional architectures beyond CNN, GRU, and TCN, including Transformers and hybrid models, to evaluate their suitability for pulse waveform analysis.
+
+Ultimately, the goal is to create a pipeline that is not only accurate on synthetic datasets but also generalizes effectively to wearable-collected signals for practical, non-invasive cardiovascular health monitoring.
+
 ## References
 
 - Charlton PH, Mariscal Harana J, Vennin S, Li Y, Chowienczyk P, Alastruey J. *Modeling arterial pulse waves in healthy aging: a database for in silico evaluation of hemodynamics and pulse wave indexes*. Am J Physiol Heart Circ Physiol, 2019. [DOI](https://doi.org/10.1152/ajpheart.00218.2019)
