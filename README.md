@@ -6,7 +6,7 @@ A comprehensive pipeline for predicting arterial stiffness from wrist pulse wave
 
 **Research Team:** 
 - Dinh Bach Tue (Student) - Aalto University, Finland
-- PhD Researcher Bahmani Nima (Advisor),
+- PhD Researcher Bahmani Nima (Advisor)
 - Professor Stephan Sigg (Supervisor)
 
 **Objective:** Develop robust foundation for transferring knowledge from synthetic waveform data to real wearable device data for non-invasive cardiovascular health monitoring.
