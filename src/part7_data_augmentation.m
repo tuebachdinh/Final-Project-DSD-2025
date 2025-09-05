@@ -83,13 +83,13 @@ waves_augmented.PPG_Radial = X_ppg_aug;
 waves_augmented.A_Radial = X_area_aug;
 PWV_cf_augmented = y_aug;
 
-% Visualization
+% Example Visualization
 figure('Position', [100, 100, 1400, 800]);
-sample_idx = randperm(N_aug, 6);
+sample_idx = randperm(N_aug, 5);
 t_plot = (1:T_aug)/fs;
 
-for i = 1:6
-    subplot(3,4,i);
+for i = 1:4
+    subplot(2,4,i);
     plot(t_plot, X_ppg_clean(sample_idx(i),:), 'b-', 'LineWidth', 1.5); hold on;
     plot(t_plot, X_ppg_aug(sample_idx(i),:), 'r--', 'LineWidth', 1);
     title(sprintf('PPG Subject %d', sample_idx(i)));
@@ -98,8 +98,8 @@ for i = 1:6
     grid on;
 end
 
-for i = 1:6
-    subplot(3,4,i+6);
+for i = 1:4
+    subplot(2,4,i+4);
     plot(t_plot, X_area_clean(sample_idx(i),:), 'b-', 'LineWidth', 1.5); hold on;
     plot(t_plot, X_area_aug(sample_idx(i),:), 'r--', 'LineWidth', 1);
     title(sprintf('Area Subject %d', sample_idx(i)));
