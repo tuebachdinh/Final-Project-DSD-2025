@@ -27,6 +27,15 @@ A comprehensive pipeline for predicting arterial stiffness from wrist pulse wave
 - Download: [http://haemod.uk/original](http://haemod.uk/original)
 ---
 
+## Results
+
+### Example Visualization
+
+![intepretability](images/part10_interpretability/augmented/part10_overlay_gru_2675.png)
+![model](images/part9_models_comparison/scatterplot/part9_comparison_clean_area_with_TCN.png)
+![augmentation](images/part7_data_augmentation_comparison.png)
+
+
 ## Repository Structure
 
 ```
