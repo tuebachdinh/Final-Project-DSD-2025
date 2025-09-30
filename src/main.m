@@ -98,8 +98,6 @@ analyzeNetwork(S.net_tcn);
 
 % More GUI way, drag-drop
 % deepNetworkDesigner(S.net_tcn) 
-% deepNetworkDesigner(S.net_tcn) 
-% deepNetworkDesigner(S.net_tcn)  
 
 %% Part 12: 5-fold cross validation on best model (TCN - both PPG + Area as inputs)
 % Using both clean and augmented data after seeing the benefits of augmentation
